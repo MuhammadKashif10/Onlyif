@@ -1,3 +1,5 @@
+import { formatCurrencyCompact } from '@/utils/currency';
+
 interface OfferResultCardProps {
   estimatedValue: number;
   address: string;
@@ -23,17 +25,18 @@ export default function OfferResultCard({
   onDecline,
   className = ""
 }: OfferResultCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Remove the old formatCurrency function
+  // const formatCurrency = (amount: number) => {
+  //   return new Intl.NumberFormat('en-US', {
+  //     style: 'currency',
+  //     currency: 'USD',
+  //     minimumFractionDigits: 0,
+  //     maximumFractionDigits: 0,
+  //   }).format(amount);
+  // };
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
+    <div className={`bg-white border border-gray-200 rounded-lg p-6 shadow-sm ${className}`}>
       {/* Header */}
       <div className="text-center mb-6">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -67,7 +70,7 @@ export default function OfferResultCard({
       {/* Offer Amount */}
       <div className="text-center mb-6">
         <div className="text-4xl font-bold text-blue-600 mb-2">
-          {formatCurrency(estimatedValue)}
+          {formatCurrencyCompact(estimatedValue)}
         </div>
         <p className="text-gray-600">Estimated Cash Offer</p>
       </div>
@@ -131,4 +134,4 @@ export default function OfferResultCard({
       </p>
     </div>
   );
-} 
+}

@@ -1,5 +1,5 @@
-import { Metadata } from 'next';
-import Navbar from '@/components/main/Navbar';
+'use client';
+import { Navbar } from '@/components';
 import Footer from '@/components/main/Footer';
 import HeroSection from '@/components/sections/HeroSection';
 

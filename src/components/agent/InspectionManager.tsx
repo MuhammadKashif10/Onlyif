@@ -60,46 +60,21 @@ export default function InspectionManager({ agentId, className = '' }: Inspectio
   const loadInspections = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockInspections: Inspection[] = [
-        {
-          id: '1',
-          propertyId: 'prop-1',
-          propertyName: 'Beautiful Family Home',
-          propertyAddress: '123 Maple Street, Austin, TX 78701',
-          date: '2024-03-25',
-          time: '10:00',
-          status: 'scheduled',
-          inspector: 'John Smith',
-          client: 'Mike Johnson',
-          clientEmail: 'mike.johnson@email.com',
-          clientPhone: '(555) 123-4567',
-          notes: 'First inspection - focus on electrical and plumbing',
-          internalNotes: 'Client is very interested, pre-approved for $750k',
-          reminderSent: false,
-          createdAt: '2024-03-20T10:00:00Z'
-        },
-        {
-          id: '2',
-          propertyId: 'prop-2',
-          propertyName: 'Modern Downtown Condo',
-          propertyAddress: '456 Main Street, Austin, TX 78702',
-          date: '2024-03-22',
-          time: '14:00',
-          status: 'completed',
-          inspector: 'Jane Doe',
-          client: 'Sarah Wilson',
-          clientEmail: 'sarah.wilson@email.com',
-          clientPhone: '(555) 987-6543',
-          notes: 'Standard inspection',
-          internalNotes: 'Property in excellent condition, client ready to make offer',
-          reminderSent: true,
-          createdAt: '2024-03-18T14:00:00Z'
+      // Use real API call instead of mock data
+      const response = await fetch('/api/inspections', {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
         }
-      ];
-      setInspections(mockInspections);
+      });
+      
+      if (!response.ok) throw new Error('Failed to load inspections');
+      
+      const data = await response.json();
+      setInspections(data.data || data);
     } catch (error) {
       console.error('Error loading inspections:', error);
+      setInspections([]);
     } finally {
       setLoading(false);
     }

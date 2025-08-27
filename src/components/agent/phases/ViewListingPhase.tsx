@@ -47,48 +47,12 @@ export default function ViewListingPhase() {
 
       setLoading(true);
       try {
-        // Mock detailed property data - in real app, this would come from API
-        const mockDetails: PropertyDetails = {
-          id: agentData.selectedProperty.id,
-          title: agentData.selectedProperty.title,
-          address: agentData.selectedProperty.address,
-          price: agentData.selectedProperty.price,
-          status: agentData.selectedProperty.status,
-          images: [
-            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80'
-          ],
-          description: 'This stunning property offers modern living with classic charm. Features include updated kitchen, spacious living areas, and beautiful outdoor space perfect for entertaining.',
-          beds: agentData.selectedProperty.beds || 4,
-          baths: agentData.selectedProperty.baths || 3,
-          size: agentData.selectedProperty.size || 2500,
-          yearBuilt: 2018,
-          lotSize: 0.25,
-          propertyType: 'Single Family Home',
-          features: [
-            'Updated Kitchen',
-            'Hardwood Floors',
-            'Central Air',
-            'Garage',
-            'Fireplace',
-            'Garden',
-            'Patio'
-          ],
-          agent: {
-            name: 'John Smith',
-            phone: '(555) 123-4567',
-            email: 'john.smith@realty.com'
-          },
-          permissions: {
-            canEdit: true,
-            canScheduleInspection: true,
-            canViewFinancials: true
-          }
-        };
+        // Use real API call instead of mock data
+        const response = await propertiesApi.getPropertyById(agentData.selectedProperty.id);
+        const propertyDetails = response.data || response;
         
-        setPropertyDetails(mockDetails);
-        updateAgentData({ propertyDetails: mockDetails });
+        setPropertyDetails(propertyDetails);
+        updateAgentData({ propertyDetails });
       } catch (error) {
         console.error('Error fetching property details:', error);
         setHasPermission(false);

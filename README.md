@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # OnlyIf - Real Estate Platform
 
 A modern, responsive real estate platform built with Next.js 14, TypeScript, and Tailwind CSS, inspired by OpenDoor's design and functionality.
@@ -332,3 +333,6 @@ For support, email support@onlyif.com or join our Slack channel.
 ---
 
 Built with ❤️ by the OnlyIf team
+=======
+# Onlyif
+>>>>>>> 6fd388dc74e901240d8422b9af69cd23dd0e23eb

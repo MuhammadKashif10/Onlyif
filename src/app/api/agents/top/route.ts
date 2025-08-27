@@ -99,11 +99,11 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Real API implementation would go here
-    return NextResponse.json(
-      { success: false, error: 'Real API not implemented yet' },
-      { status: 501 }
-    );
+    // Return empty array when not using mocks
+    return NextResponse.json({
+      success: true,
+      data: []
+    });
     
   } catch (error) {
     console.error('Error fetching top agents:', error);

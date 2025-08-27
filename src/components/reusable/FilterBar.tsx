@@ -17,6 +17,15 @@ interface FilterBarProps {
   className?: string;
 }
 
+// Renamed to avoid conflict with API FilterOptions
+interface LocalFilterOptions {
+  sizeRange: [number, number]; // Now in square meters
+}
+
+const defaultFilterOptions: LocalFilterOptions = {
+  sizeRange: [0, 465], // Converted from 5000 sq ft
+}
+
 const FilterBar: React.FC<FilterBarProps> = ({
   filters,
   onFilterChange,
@@ -133,7 +142,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
           <button
             onClick={() => onFilterChange({
               priceRange: [0, 1000000],
-              sizeRange: [0, 5000],
+              sizeRange: [0, 465], // Updated to square meters
               location: '',
               bedrooms: 0,
               bathrooms: 0,

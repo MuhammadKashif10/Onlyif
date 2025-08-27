@@ -14,7 +14,7 @@ export default function AgentRegistration() {
     password: '',
     confirmPassword: '',
     phone: '',
-    licenseNumber: '',
+    // licenseNumber: '', // REMOVED - License number field
     brokerage: '',
     yearsOfExperience: '',
     specialization: '',
@@ -49,7 +49,7 @@ export default function AgentRegistration() {
         password: formData.password,
         type: 'agent',
         phone: formData.phone,
-        licenseNumber: formData.licenseNumber,
+        // licenseNumber: formData.licenseNumber, // REMOVED - License number field
         brokerage: formData.brokerage,
         yearsOfExperience: parseInt(formData.yearsOfExperience),
         specialization: formData.specialization
@@ -202,17 +202,8 @@ export default function AgentRegistration() {
               aria-label="Confirm password"
             />
 
-            {/* Professional Information */}
-            <InputField
-              label="License Number"
-              type="text"
-              value={formData.licenseNumber}
-              onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
-              required
-              placeholder="Enter your license number"
-              aria-label="License number"
-            />
-
+            {/* Professional Information - LICENSE NUMBER FIELD REMOVED */}
+            
             <InputField
               label="Brokerage"
               type="text"

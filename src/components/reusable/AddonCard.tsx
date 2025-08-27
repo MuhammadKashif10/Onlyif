@@ -1,5 +1,6 @@
 import React from 'react';
 import { getSafeImageUrl } from '@/utils/imageUtils';
+import { formatCurrency } from '@/utils/currency';
 
 interface AddonCardProps {
   title: string;
@@ -24,32 +25,18 @@ export default function AddonCard({
   className = '',
   isActive = false
 }: AddonCardProps) {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
-  };
-
-  const getSafeImageUrl = (url: string, type: string) => {
-    if (!url) {
-      return `https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&h=300&q=80`;
-    }
-    return url;
-  };
+  // Remove the old formatPrice function
+  // const formatPrice = (price: number) => {
+  //   return new Intl.NumberFormat('en-US', {
+  //     style: 'currency',
+  //     currency: 'USD'
+  //   }).format(price);
+  // };
 
   return (
-    <div
-      className={`border rounded-lg overflow-hidden cursor-pointer transition-all ${
-        isActive
-          ? 'border-green-500 bg-green-50'
-          : isSelected
-          ? 'border-blue-500 bg-blue-50 shadow-lg'
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-      } ${className}`}
-      onClick={!isActive ? onSelect : undefined}
-    >
-      {/* Image Section */}
+    <div className={`border rounded-lg p-4 transition-all ${
+      isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+    } ${className}`}>
       {image && (
         <div className="relative h-48 overflow-hidden">
           <img
@@ -79,7 +66,7 @@ export default function AddonCard({
       <div className="p-6">
         <div className="flex justify-between items-start mb-3">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          <span className="text-2xl font-bold text-blue-600">{formatPrice(price)}</span>
+          <span className="text-2xl font-bold text-blue-600">{formatCurrency(price)}</span>
         </div>
         
         <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>

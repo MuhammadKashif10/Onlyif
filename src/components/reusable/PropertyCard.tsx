@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { formatCurrencyCompact } from '@/utils/currency';
 
 interface PropertyCardProps {
   id: string;
@@ -9,7 +10,7 @@ interface PropertyCardProps {
   price: number;
   beds: number;
   baths: number;
-  size: number;
+  size: number; // This will now be in square meters
   featured?: boolean;
 }
 
@@ -24,17 +25,8 @@ export default function PropertyCard({
   size,
   featured = false
 }: PropertyCardProps) {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
   const formatSize = (size: number) => {
-    return `${size.toLocaleString()} sq ft`;
+    return `${size.toLocaleString()} sq m`; // Changed from sq ft
   };
 
   return (
@@ -55,7 +47,7 @@ export default function PropertyCard({
           </div>
         )}
         <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-semibold text-gray-800">
-          {formatPrice(price)}
+          {formatCurrencyCompact(price)}
         </div>
       </div>
       
@@ -99,4 +91,4 @@ export default function PropertyCard({
       </div>
     </div>
   );
-} 
+}

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button, Modal, InputField, Alert, Loader } from '@/components/reusable';
 import { coreLogicAPI, CoreLogicValuationResponse } from '@/api/corelogic';
 import { useUI } from '@/context/UIContext';
+import { formatCurrencyCompact } from '@/utils/currency';
 
 interface PriceCheckerProps {
   className?: string;
@@ -237,12 +238,16 @@ const PriceChecker: React.FC<PriceCheckerProps> = ({
                   ${valuation.estimatedValue.toLocaleString()}
                 </p>
                 
+                <div className="text-2xl font-bold text-green-600 mb-2">
+                  {formatCurrencyCompact(valuation.estimatedValue)}
+                </div>
+                
                 <div className="flex justify-center items-center space-x-4 text-sm text-gray-600">
                   <div>
-                    <span className="font-medium">Low:</span> ${valuation.lowRange.toLocaleString()}
+                    <span className="font-medium">Low:</span> {formatCurrencyCompact(valuation.lowRange)}
                   </div>
                   <div>
-                    <span className="font-medium">High:</span> ${valuation.highRange.toLocaleString()}
+                    <span className="font-medium">High:</span> {formatCurrencyCompact(valuation.highRange)}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,17 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+// Simple debounce utility
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 interface Location {
   id: string;
@@ -24,10 +36,11 @@ export default function LocationSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(value);
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock location data
+  // Mock location data as fallback
   const mockLocations: Location[] = [
     { id: '1', name: 'Austin', type: 'city', state: 'TX' },
     { id: '2', name: 'Dallas', type: 'city', state: 'TX' },
@@ -46,19 +59,53 @@ export default function LocationSearch({
     { id: '15', name: 'Leander', type: 'city', state: 'TX' },
   ];
 
+  // API call function
+  const fetchLocations = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setFilteredLocations([]);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/locations/search?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        const locationData = data.data || data;
+        setLocations(locationData);
+        setFilteredLocations(locationData);
+      } else {
+        // Fallback to mock data if API fails
+        const filtered = mockLocations.filter(location =>
+          location.name.toLowerCase().includes(query.toLowerCase()) ||
+          location.state.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 8);
+        setFilteredLocations(filtered);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      // Fallback to mock data
+      const filtered = mockLocations.filter(location =>
+        location.name.toLowerCase().includes(query.toLowerCase()) ||
+        location.state.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 8);
+      setFilteredLocations(filtered);
+    }
+  }, []);
+
+  // Debounced search
+  const debouncedFetchLocations = useCallback(
+    debounce(fetchLocations, 300),
+    [fetchLocations]
+  );
+
+  // Search effect
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredLocations([]);
       return;
     }
-
-    const filtered = mockLocations.filter(location =>
-      location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      location.state.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 8);
-
-    setFilteredLocations(filtered);
-  }, [searchQuery]);
+    debouncedFetchLocations(searchQuery);
+  }, [searchQuery, debouncedFetchLocations]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -162,4 +209,4 @@ export default function LocationSearch({
       )}
     </div>
   );
-} 
+}

@@ -5,6 +5,7 @@ export { default as Footer } from './layout/Footer'; // Make sure this points to
 // Section Components
 export { default as HeroSection } from './sections/HeroSection';
 export { default as PropertyGrid } from './sections/PropertyGrid';
+export { default as MapListingsLayout } from './sections/MapListingsLayout';
 export { default as CTASection } from './sections/CTASection';
 export { default as TestimonialSlider } from './sections/TestimonialSlider';
 
@@ -40,6 +41,7 @@ export { default as RangeSlider } from './reusable/RangeSlider';
 export { default as LocationSearch } from './reusable/LocationSearch';
 export { default as PropertyCarousel } from './reusable/PropertyCarousel';
 export { default as MapPlaceholder } from './reusable/MapPlaceholder';
+export { default as PropertyMap } from './reusable/PropertyMap';
 export { default as SimilarProperties } from './reusable/SimilarProperties';
 export { default as Button } from './reusable/Button';
 export { default as Modal } from './reusable/Modal';

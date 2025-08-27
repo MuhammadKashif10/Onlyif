@@ -20,12 +20,19 @@ const handleValidationErrors = (req, res, next) => {
 
 // Auth validation rules
 const validateRegister = [
-  body('name')
+  body('firstName')
     .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('Name must be between 2 and 50 characters')
+    .isLength({ min: 1, max: 50 })
+    .withMessage('First name must be between 1 and 50 characters')
     .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('Name can only contain letters and spaces'),
+    .withMessage('First name can only contain letters and spaces'),
+  
+  body('lastName')
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Last name must be between 1 and 50 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Last name can only contain letters and spaces'),
   
   body('email')
     .isEmail()
@@ -35,8 +42,8 @@ const validateRegister = [
   body('password')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]*$/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .matches(/^(?=.*[a-zA-Z])(?=.*\d).*$/)
+    .withMessage('Password must contain at least one letter and one number'),
   
   body('role')
     .optional()
@@ -51,13 +58,7 @@ const validateRegister = [
     .isMobilePhone()
     .withMessage('Please provide a valid phone number'),
   
-  body('licenseNumber')
-    .if(body('role').equals('agent'))
-    .notEmpty()
-    .withMessage('License number is required for agents')
-    .trim()
-    .isLength({ min: 3, max: 50 })
-    .withMessage('License number must be between 3 and 50 characters'),
+  // REMOVE the entire commented licenseNumber validation block
   
   body('brokerage')
     .if(body('role').equals('agent'))
@@ -140,6 +141,12 @@ const validateProperty = [
     .optional()
     .isInt({ min: 100, max: 50000 })
     .withMessage('Size must be between 100 and 50,000 square feet'),
+  
+  body('squareMeters')
+    .isNumeric()
+    .withMessage('Square meters must be a number')
+    .isFloat({ min: 1, max: 4645 })
+    .withMessage('Square meters must be between 1 and 4,645 square meters'),
   
   handleValidationErrors
 ];

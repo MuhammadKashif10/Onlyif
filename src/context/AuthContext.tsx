@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation'; // Add this import
 
 interface User {
   id: string;
@@ -30,7 +31,7 @@ interface RegisterData {
   type: 'buyer' | 'seller' | 'agent';
   // Agent-specific fields
   phone?: string;
-  licenseNumber?: string;
+  // licenseNumber?: string; // REMOVED
   brokerage?: string;
   yearsOfExperience?: number;
   specialization?: string;
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter(); // Add this line
 
   useEffect(() => {
     // Check for existing user session and token only in browser
@@ -185,9 +187,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      // Split the full name into firstName and lastName
+      const nameParts = userData.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
       // Prepare request body
       const requestBody: any = {
-        name: userData.name,
+        firstName, // ✅ Send firstName separately
+        lastName,  // ✅ Send lastName separately
         email: userData.email,
         password: userData.password,
         role: userData.type, // Map 'type' to 'role' for backend
@@ -200,7 +208,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
       // Add agent-specific fields if registering as agent
       if (userData.type === 'agent') {
-        requestBody.licenseNumber = userData.licenseNumber;
         requestBody.brokerage = userData.brokerage;
         requestBody.yearsOfExperience = userData.yearsOfExperience;
         requestBody.specialization = userData.specialization;
@@ -252,6 +259,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    
+    // Redirect to home page after logout
+    router.push('/');
   };
 
   const sendOtp = async (email?: string, phone?: string) => {

@@ -1,4 +1,4 @@
-import Navbar from '@/components/main/Navbar';
+import { Navbar, CTASection } from '@/components';
 import StepCard from '@/components/reusable/StepCard';
 import Link from 'next/link';
 import HeroSection from '@/components/sections/HeroSection';
@@ -54,7 +54,7 @@ export default function HowItWorksPage() {
       
       {/* Hero Section */}
       <HeroSection
-        backgroundImage="/images/04.jpg"  // Changed to a more relevant image
+        backgroundImage="/images/04.jpg"
         headline="How OnlyIf Works"
         subheadline="Simple, transparent, and stress-free real estate transactions"
         primaryCtaText="Get Started"
@@ -158,25 +158,18 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Ready to Get Started?
-            </h2>
-            <p className="text-xl text-blue-100 mb-8">
-              Get your competitive cash offer in 24 hours. No obligation, no hassle.
-            </p>
-            <Link
-              href="/sell/get-offer"
-              className="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              Get Your Offer Now
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* CTA Section - Using the same component as localhost:3010 */}
+      <CTASection
+        title="Ready to Get Started?"
+        subtitle="Join thousands of satisfied sellers"
+        description="Get your competitive cash offer in 24 hours. No obligation, no hassle."
+        primaryCtaText="Get Your Offer Now"
+        primaryCtaHref="/sell/get-offer"
+        secondaryCtaText="Learn More"
+        secondaryCtaHref="/sell"
+        variant="primary"
+        alignment="center"
+      />
     </div>
   );
 }

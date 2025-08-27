@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useBuyerContext } from '@/context/BuyerContext';
 import Button from '@/components/reusable/Button';
 import InputField from '@/components/reusable/InputField';
+import { formatCurrency, dollarsToCents } from '@/utils/currency';
 
 interface PaymentFormData {
   cardNumber: string;
@@ -130,7 +131,7 @@ export default function PaymentPhase() {
           paymentData: {
             cardholderName: paymentData.cardholderName,
             cardNumber: paymentData.cardNumber,
-            expirationDate: paymentData.expirationDate,
+            expirationDate: paymentData.expiryDate, // Changed from expirationDate to expiryDate
             cvv: paymentData.cvv,
             billingAddress: {
               street: paymentData.billingAddress.street,
@@ -329,12 +330,19 @@ export default function PaymentPhase() {
           <Button
             onClick={handlePayment}
             loading={isProcessing}
-            disabled={isProcessing}
-            size="full"
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isProcessing ? 'Processing Payment...' : 'Pay $49 & Continue'}
-          </Button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-blue-900">Property Access Fee</h3>
+                  <p className="text-gray-600">Pay {formatCurrency(49)} to access full property information and contact details</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-green-600">{formatCurrency(49)}</div>
+                  <div className="text-sm text-gray-500">One-time fee</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

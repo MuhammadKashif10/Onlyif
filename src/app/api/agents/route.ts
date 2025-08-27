@@ -193,11 +193,15 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Real API implementation would go here
-    return NextResponse.json(
-      { success: false, error: 'Real API not implemented yet' },
-      { status: 501 }
-    );
+    // Return empty array when not using mocks
+    return NextResponse.json({
+      success: true,
+      data: [],
+      total: 0,
+      page,
+      limit,
+      totalPages: 0
+    });
     
   } catch (error) {
     console.error('Error fetching agents:', error);

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useBuyerContext } from '@/context/BuyerContext';
+import { useBuyerContext } from '../../context/BuyerContext';
+import { Check } from 'lucide-react';
 
 interface Phase {
   id: number;
@@ -13,84 +14,95 @@ interface WizardStepperProps {
   phases: Phase[];
 }
 
-export default function WizardStepper({ phases }: WizardStepperProps) {
-  const { currentPhase, buyerData } = useBuyerContext();
+const WizardStepper: React.FC<WizardStepperProps> = ({ phases }) => {
+  const { currentPhase, canProceedToPhase, setPhase } = useBuyerContext();
 
   const getPhaseStatus = (phaseId: number) => {
     if (phaseId < currentPhase) return 'completed';
-    if (phaseId === currentPhase) return 'active';
+    if (phaseId === currentPhase) return 'current';
     return 'upcoming';
   };
 
   const isPhaseAccessible = (phaseId: number) => {
-    switch (phaseId) {
-      case 1: return true; // Registration always accessible
-      case 2: return true; // OTP verification accessible after registration
-      case 3: return buyerData.otpVerified; // Browse accessible after OTP verification
-      case 4: return buyerData.selectedProperty !== null; // Payment accessible after property selection
-      case 5: return buyerData.paymentCompleted; // Interest accessible after payment
-      default: return false;
+    return phaseId <= currentPhase || canProceedToPhase(phaseId);
+  };
+
+  const handlePhaseClick = (phaseId: number) => {
+    if (isPhaseAccessible(phaseId)) {
+      setPhase(phaseId);
     }
   };
 
   return (
-    <div className="px-6 py-4 bg-gray-50 border-b">
-      <div className="flex items-center justify-between">
-        {phases.map((phase, index) => {
-          const status = getPhaseStatus(phase.id);
-          const isAccessible = isPhaseAccessible(phase.id);
-          
-          return (
-            <React.Fragment key={phase.id}>
-              <div className="flex items-center">
-                <div className={`
-                  flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium
-                  ${
-                    status === 'completed'
-                      ? 'bg-green-600 text-white'
-                      : status === 'active'
-                      ? 'bg-green-600 text-white'
-                      : isAccessible
-                      ? 'bg-gray-300 text-gray-700'
-                      : 'bg-gray-200 text-gray-400'
-                  }
-                `}>
-                  {status === 'completed' ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    phase.id
+    <div className="px-6 py-4 border-b border-gray-200">
+      <nav aria-label="Progress">
+        <ol className="flex items-center justify-between">
+          {phases.map((phase, index) => {
+            const status = getPhaseStatus(phase.id);
+            const isAccessible = isPhaseAccessible(phase.id);
+            
+            return (
+              <li key={phase.id} className="flex-1">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handlePhaseClick(phase.id)}
+                    disabled={!isAccessible}
+                    className={`
+                      flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors
+                      ${status === 'completed'
+                        ? 'bg-green-600 border-green-600 text-white'
+                        : status === 'current'
+                        ? 'border-green-600 text-green-600 bg-white'
+                        : isAccessible
+                        ? 'border-gray-300 text-gray-500 bg-white hover:border-gray-400'
+                        : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                      }
+                    `}
+                    aria-current={status === 'current' ? 'step' : undefined}
+                  >
+                    {status === 'completed' ? (
+                      <Check className="w-6 h-6" />
+                    ) : (
+                      <span className="text-sm font-medium">{phase.id}</span>
+                    )}
+                  </button>
+                  
+                  <div className="ml-3 flex-1">
+                    <button
+                      onClick={() => handlePhaseClick(phase.id)}
+                      disabled={!isAccessible}
+                      className={`
+                        text-left block text-sm font-medium transition-colors
+                        ${status === 'current'
+                          ? 'text-green-600'
+                          : status === 'completed'
+                          ? 'text-gray-900'
+                          : isAccessible
+                          ? 'text-gray-500 hover:text-gray-700'
+                          : 'text-gray-300 cursor-not-allowed'
+                        }
+                      `}
+                    >
+                      {phase.title}
+                    </button>
+                  </div>
+                  
+                  {index < phases.length - 1 && (
+                    <div className="flex-1 ml-4">
+                      <div className={`
+                        h-0.5 transition-colors
+                        ${status === 'completed' ? 'bg-green-600' : 'bg-gray-200'}
+                      `} />
+                    </div>
                   )}
                 </div>
-                <span className={`
-                  ml-2 text-sm font-medium
-                  ${
-                    status === 'active'
-                      ? 'text-green-600'
-                      : isAccessible
-                      ? 'text-gray-700'
-                      : 'text-gray-400'
-                  }
-                `}>
-                  {phase.title}
-                </span>
-              </div>
-              
-              {index < phases.length - 1 && (
-                <div className={`
-                  flex-1 h-0.5 mx-4
-                  ${
-                    getPhaseStatus(phase.id + 1) === 'completed' || getPhaseStatus(phase.id) === 'completed'
-                      ? 'bg-green-600'
-                      : 'bg-gray-300'
-                  }
-                `} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
     </div>
   );
-}
+};
+
+export default WizardStepper;

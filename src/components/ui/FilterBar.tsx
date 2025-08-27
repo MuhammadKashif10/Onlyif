@@ -22,7 +22,7 @@ export default function FilterBar({
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 1000000 });
-  const [sizeRange, setSizeRange] = useState({ min: 0, max: 5000 });
+  const [sizeRange, setSizeRange] = useState({ min: 0, max: 465 }); // Updated max
   const [loading, setLoading] = useState(false);
 
   // Load filter options on component mount
@@ -187,32 +187,28 @@ export default function FilterBar({
               </div>
 
               {/* Size Range */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Square Feet
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Square Meters {/* Changed from Square Feet */}
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <input
-                      type="number"
-                      placeholder="Min sq ft"
-                      value={currentFilters.sizeMin || ''}
-                      onChange={(e) => handleFilterChange('sizeMin', e.target.value ? Number(e.target.value) : undefined)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="number"
-                      placeholder="Max sq ft"
-                      value={currentFilters.sizeMax || ''}
-                      onChange={(e) => handleFilterChange('sizeMax', e.target.value ? Number(e.target.value) : undefined)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    />
-                  </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min sq"
+                    value={currentFilters.minSize || ''}
+                    onChange={(e) => handleFilterChange('minSize', e.target.value ? Number(e.target.value) : undefined)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max sq m"
+                    value={currentFilters.maxSize || ''}
+                    onChange={(e) => handleFilterChange('maxSize', e.target.value ? Number(e.target.value) : undefined)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Range: {sizeRange.min.toLocaleString()} - {sizeRange.max.toLocaleString()} sq ft
+                <div className="text-xs text-gray-500">
+                  Range: {sizeRange.min.toLocaleString()} - {sizeRange.max.toLocaleString()} sq m {/* Changed unit */}
                 </div>
               </div>
 

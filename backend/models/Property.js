@@ -1,116 +1,326 @@
 const mongoose = require('mongoose');
 
 const propertySchema = new mongoose.Schema({
+  // Required owner field (fixed)
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false // Make owner optional for public submissions
+    required: [true, 'Property owner is required'] // Made required
   },
+  
+  // Basic property information
   title: {
     type: String,
     required: [true, 'Property title is required'],
-    trim: true
+    trim: true,
+    maxlength: [200, 'Title cannot exceed 200 characters']
   },
+  
+  // Enhanced address with validation
   address: {
-    type: String,
-    required: [true, 'Address is required'],
-    trim: true
+    street: {
+      type: String,
+      required: [true, 'Street address is required'],
+      trim: true
+    },
+    city: {
+      type: String,
+      required: [true, 'City is required'],
+      trim: true
+    },
+    state: {
+      type: String,
+      required: [true, 'State is required'],
+      trim: true,
+      uppercase: true,
+      minlength: [2, 'State must be at least 2 characters']
+    },
+    zipCode: {
+      type: String,
+      required: [true, 'ZIP code is required'],
+      trim: true,
+      match: [/^\d{5}(-\d{4})?$/, 'Please provide a valid ZIP code']
+    },
+    country: {
+      type: String,
+      default: 'US',
+      uppercase: true
+    }
   },
-  city: {
-    type: String,
-    required: [true, 'City is required'],
-    trim: true
+  
+  // Geographic indexing (2dsphere) - CRITICAL FIX
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: [true, 'Property coordinates are required'],
+      validate: {
+        validator: function(coords) {
+          return coords.length === 2 && 
+                 coords[0] >= -180 && coords[0] <= 180 && // longitude
+                 coords[1] >= -90 && coords[1] <= 90;    // latitude
+        },
+        message: 'Invalid coordinates format [longitude, latitude]'
+      }
+    }
   },
-  state: {
+  
+  // Property details with enhanced validation
+  propertyType: {
     type: String,
-    required: [true, 'State is required'],
-    trim: true
+    enum: ['single-family', 'condo', 'townhouse', 'multi-family', 'land', 'commercial'],
+    required: [true, 'Property type is required']
   },
-  zipCode: {
-    type: String,
-    required: [true, 'Zip code is required'],
-    trim: true
-  },
+  
   price: {
     type: Number,
     required: [true, 'Price is required'],
-    min: 0
+    min: [0, 'Price cannot be negative'],
+    max: [100000000, 'Price cannot exceed $100M']
   },
+  
   beds: {
     type: Number,
     required: true,
-    min: 0
+    min: [0, 'Bedrooms cannot be negative'],
+    max: [20, 'Bedrooms cannot exceed 20']
   },
+  
   baths: {
     type: Number,
     required: true,
-    min: 0
+    min: [0, 'Bathrooms cannot be negative'],
+    max: [20, 'Bathrooms cannot exceed 20']
   },
-  size: {
+  
+  squareMeters: {
     type: Number,
-    required: true,
-    min: 0
+    required: [true, 'Square meters is required'],
+    min: [1, 'Square meters must be at least 1'],
+    max: [4645, 'Square meters cannot exceed 4,645'] // Converted from 50,000 sq ft
   },
+  
   yearBuilt: {
     type: Number,
-    min: 1800,
-    max: new Date().getFullYear() + 1
+    min: [1800, 'Year built cannot be before 1800'],
+    max: [new Date().getFullYear() + 2, 'Year built cannot be more than 2 years in the future']
   },
+  
   description: {
     type: String,
-    trim: true
+    trim: true,
+    maxlength: [2000, 'Description cannot exceed 2000 characters']
   },
+  
   images: [{
-    type: String
+    url: {
+      type: String,
+      required: true
+    },
+    caption: String,
+    isPrimary: {
+      type: Boolean,
+      default: false
+    },
+    order: {
+      type: Number,
+      default: 0
+    }
   }],
-  mainImage: {
-    type: String
-  },
+  
   status: {
     type: String,
-    enum: ['public', 'private', 'pending'],
-    default: 'pending'
+    enum: ['draft', 'active', 'pending', 'sold', 'withdrawn', 'expired'],
+    default: 'draft'
   },
-  assignedAgent: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
+  
+  // Enhanced multi-agent support with history
+  agents: [{
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['listing', 'selling', 'co-listing'],
+      default: 'listing'
+    },
+    commissionRate: {
+      type: Number,
+      min: 0,
+      max: 10,
+      default: 3
+    },
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }],
+  
+  // Agent assignment history for audit trail
+  agentHistory: [{
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    action: {
+      type: String,
+      enum: ['assigned', 'removed', 'commission_changed'],
+      required: true
+    },
+    previousCommission: Number,
+    newCommission: Number,
+    reason: String,
+    performedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
   featured: {
     type: Boolean,
     default: false
   },
+  
   dateListed: {
     type: Date,
     default: Date.now
   },
+  
   daysOnMarket: {
     type: Number,
     default: 0
   },
-  addons: [{
-    type: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Addon'
-    },
-    status: {
-      type: String,
-      enum: ['active', 'inactive'],
-      default: 'active'
-    }
-  }]
+  
+  // Soft delete implementation - CRITICAL FIX
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  // SEO and search optimization
+  slug: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  
+  searchKeywords: [String],
+  
+  // Analytics
+  viewCount: {
+    type: Number,
+    default: 0
+  },
+  
+  lastViewed: {
+    type: Date
+  }
 }, {
   timestamps: true
 });
 
-// Calculate days on market
+// Geographic indexing for location-based searches
+propertySchema.index({ location: '2dsphere' });
+
+// Advanced compound indexes for performance
+propertySchema.index({ status: 1, isDeleted: 1, dateListed: -1 });
+propertySchema.index({ propertyType: 1, price: 1, isDeleted: 1 });
+propertySchema.index({ 'address.city': 1, 'address.state': 1, isDeleted: 1 });
+propertySchema.index({ price: 1, beds: 1, baths: 1, isDeleted: 1 });
+propertySchema.index({ owner: 1, isDeleted: 1 });
+propertySchema.index({ 'agents.agent': 1, 'agents.isActive': 1 });
+
+// Text index for search functionality
+propertySchema.index({
+  title: 'text',
+  description: 'text',
+  'address.street': 'text',
+  'address.city': 'text',
+  searchKeywords: 'text'
+}, {
+  weights: {
+    title: 10,
+    'address.city': 5,
+    description: 1,
+    searchKeywords: 3
+  }
+});
+
+// Pre-save middleware
 propertySchema.pre('save', function(next) {
+  // Calculate days on market
   if (this.dateListed) {
     const now = new Date();
     const listed = new Date(this.dateListed);
     this.daysOnMarket = Math.floor((now - listed) / (1000 * 60 * 60 * 24));
   }
+  
+  // Generate slug
+  if (this.isModified('title') || this.isModified('address')) {
+    const slugBase = `${this.title}-${this.address.city}-${this.address.state}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    this.slug = `${slugBase}-${this._id.toString().slice(-6)}`;
+  }
+  
   next();
 });
+
+// Soft delete methods
+propertySchema.methods.softDelete = function(deletedBy) {
+  this.isDeleted = true;
+  this.deletedAt = new Date();
+  this.deletedBy = deletedBy;
+  return this.save();
+};
+
+propertySchema.methods.restore = function() {
+  this.isDeleted = false;
+  this.deletedAt = null;
+  this.deletedBy = null;
+  return this.save();
+};
+
+// Query helpers
+propertySchema.query.active = function() {
+  return this.where({ isDeleted: false });
+};
+
+propertySchema.query.deleted = function() {
+  return this.where({ isDeleted: true });
+};
 
 module.exports = mongoose.model('Property', propertySchema);

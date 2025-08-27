@@ -43,43 +43,24 @@ export default function AddNotesPhase() {
     const fetchNotes = async () => {
       setLoading(true);
       try {
-        // Mock notes data
-        const mockNotes = [
-          {
-            id: '1',
-            propertyId: agentData.selectedProperty?.id,
-            title: 'Property Condition Assessment',
-            content: 'Overall property is in excellent condition. Minor touch-ups needed in the guest bathroom. Kitchen appliances are all in working order.',
-            type: 'property' as const,
-            priority: 'high' as const,
-            createdAt: '2024-03-20T10:00:00Z',
-            updatedAt: '2024-03-20T10:00:00Z'
-          },
-          {
-            id: '2',
-            inspectionId: '1',
-            title: 'Inspection Follow-up',
-            content: 'Client was satisfied with the inspection results. Recommended proceeding with the purchase. Need to schedule final walkthrough.',
-            type: 'inspection' as const,
-            priority: 'medium' as const,
-            createdAt: '2024-03-21T14:30:00Z',
-            updatedAt: '2024-03-21T14:30:00Z'
-          },
-          {
-            id: '3',
-            title: 'Market Analysis Update',
-            content: 'Recent comparable sales in the area show strong market performance. Property is priced competitively.',
-            type: 'general' as const,
-            priority: 'low' as const,
-            createdAt: '2024-03-22T09:15:00Z',
-            updatedAt: '2024-03-22T09:15:00Z'
+        // Use real API call to fetch notes
+        const response = await fetch('/api/notes', {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
           }
-        ];
+        });
         
-        setNotes(mockNotes);
-        updateAgentData({ notes: mockNotes });
+        if (!response.ok) throw new Error('Failed to fetch notes');
+        
+        const data = await response.json();
+        const notes = data.data || data;
+        
+        setNotes(notes);
+        updateAgentData({ notes });
       } catch (error) {
         console.error('Error fetching notes:', error);
+        setNotes([]);
       } finally {
         setLoading(false);
       }

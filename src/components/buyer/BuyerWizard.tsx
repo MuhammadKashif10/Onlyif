@@ -4,17 +4,13 @@ import React from 'react';
 import { useBuyerContext } from '@/context/BuyerContext';
 import RegistrationPhase from './phases/RegistrationPhase';
 import OtpVerificationPhase from './phases/OtpVerificationPhase';
-import BrowsePhase from './phases/BrowsePhase';
-import PaymentPhase from './phases/PaymentPhase';
 import InterestPhase from './phases/InterestPhase';
 import WizardStepper from './WizardStepper';
 
 const phases = [
   { id: 1, title: 'Register', component: RegistrationPhase },
   { id: 2, title: 'Verify Account', component: OtpVerificationPhase },
-  { id: 3, title: 'Browse Properties', component: BrowsePhase },
-  { id: 4, title: 'Unlock Details ($49)', component: PaymentPhase },
-  { id: 5, title: 'Express Interest', component: InterestPhase }
+  { id: 3, title: 'Express Interest', component: InterestPhase }
 ];
 
 export default function BuyerWizard() {

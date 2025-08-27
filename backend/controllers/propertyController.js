@@ -352,7 +352,7 @@ const submitPropertyPublic = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    const requiredFields = { title, address, city, state, zipCode, price, beds, baths, size };
+    const requiredFields = { title, address, city, state, zipCode, price, beds, baths, squareMeters };
     const missingFields = Object.entries(requiredFields)
       .filter(([key, value]) => !value && value !== 0)
       .map(([key]) => key);
@@ -399,8 +399,8 @@ const submitPropertyPublic = async (req, res) => {
     if (isNaN(propertyData.baths) || propertyData.baths < 0) {
       return res.status(400).json(errorResponse('Invalid baths value', 400));
     }
-    if (isNaN(propertyData.size) || propertyData.size < 0) {
-      return res.status(400).json(errorResponse('Invalid size value', 400));
+    if (isNaN(propertyData.squareMeters) || propertyData.squareMeters < 0) {
+      return res.status(400).json(errorResponse('Invalid square meters value', 400));
     }
 
     // Create property with validated data
@@ -456,8 +456,8 @@ const getFilterOptions = async (req, res) => {
       {
         $group: {
           _id: null,
-          minSize: { $min: '$size' },
-          maxSize: { $max: '$size' }
+          minSize: { $min: '$squareMeters' },
+          maxSize: { $max: '$squareMeters' }
         }
       }
     ]);
@@ -471,7 +471,7 @@ const getFilterOptions = async (req, res) => {
       },
       sizeRange: {
         min: sizeStats[0]?.minSize || 0,
-        max: sizeStats[0]?.maxSize || 5000
+        max: sizeStats[0]?.maxSize || 465 // 5000 sq ft converted to sq m
       }
     };
     

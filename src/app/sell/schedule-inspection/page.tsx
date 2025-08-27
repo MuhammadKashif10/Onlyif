@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/main/Navbar';
+import { Navbar } from '@/components';
 import Footer from '@/components/main/Footer';
 import ProgressStepper from '@/components/reusable/ProgressStepper';
 import DatePicker from '@/components/reusable/DatePicker';
@@ -159,4 +159,4 @@ export default function ScheduleInspectionPage() {
       <Footer />
     </div>
   );
-} 
+}

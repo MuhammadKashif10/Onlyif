@@ -10,7 +10,7 @@ export interface Property {
   price: number;
   beds: number;
   baths: number;
-  size: number;
+  size: number; // This will now represent square meters
   yearBuilt: number;
   lotSize: number;
   propertyType: string;
@@ -121,8 +121,8 @@ export interface FilterOptionsData {
     max: number;
   };
   sizeRange: {
-    min: number;
-    max: number;
+    min: number; // Now in square meters
+    max: number; // Now in square meters
   };
 }
 

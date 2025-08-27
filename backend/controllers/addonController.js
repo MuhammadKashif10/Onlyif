@@ -103,11 +103,11 @@ const purchaseAddons = async (req, res) => {
     // Create Stripe PaymentIntent
     const paymentIntent = await stripeService.createPaymentIntent(
       totalAmount,
-      'usd',
+      'aud', // Changed from 'usd' to 'aud'
       {
-        propertyId: propertyId,
         userId: req.user.id,
-        items: JSON.stringify(validatedItems)
+        addonIds: addonIds.join(','),
+        type: 'addon_purchase'
       }
     );
 

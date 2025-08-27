@@ -39,7 +39,7 @@ export default function PropertyDetailsPhase() {
     // Add validation for new fields
     if (!data.bedrooms.trim()) newErrors.bedrooms = 'Number of bedrooms is required';
     if (!data.bathrooms.trim()) newErrors.bathrooms = 'Number of bathrooms is required';
-    if (!data.squareFootage.trim()) newErrors.squareFootage = 'Square footage is required';
+    if (!data.squareFootage.trim()) newErrors.squareFootage = 'Square meters is required';
     
     // Validate numeric values
     if (data.bedrooms && (isNaN(Number(data.bedrooms)) || Number(data.bedrooms) < 0)) {
@@ -49,7 +49,7 @@ export default function PropertyDetailsPhase() {
       newErrors.bathrooms = 'Please enter a valid number of bathrooms';
     }
     if (data.squareFootage && (isNaN(Number(data.squareFootage)) || Number(data.squareFootage) <= 0)) {
-      newErrors.squareFootage = 'Please enter a valid square footage';
+      newErrors.squareFootage = 'Please enter a valid square meters';
     }
 
     setErrors(newErrors);
@@ -310,7 +310,7 @@ export default function PropertyDetailsPhase() {
 
           <div>
             <label htmlFor="squareFootage" className="block text-sm font-medium text-gray-700 mb-2">
-              Square Footage *
+              Square Meters *
             </label>
             <input
               type="number"
@@ -321,8 +321,8 @@ export default function PropertyDetailsPhase() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.squareFootage ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="2000"
-              aria-label="Square Footage"
+              placeholder="185"
+              aria-label="Square Meters"
             />
             {errors.squareFootage && <p className="mt-1 text-sm text-red-600" role="alert">{errors.squareFootage}</p>}
           </div>

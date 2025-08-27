@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { contactApi, ContactFormData } from '@/api';
+
+interface ContactFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  newsletter: boolean;
+}
 
 interface ContactFormErrors {
   firstName?: string;
@@ -103,10 +112,18 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
     setSubmitStatus('idle');
 
     try {
-      // Submit form using API
-      const response = await contactApi.submitContactForm(formData);
+      // Call the new API route
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
       
-      if (response.success) {
+      if (response.ok && result.success) {
         setSubmitStatus('success');
         setFormData({
           firstName: '',
@@ -126,7 +143,7 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
         }
       } else {
         setSubmitStatus('error');
-        console.error('Form submission failed:', response.message);
+        console.error('Form submission failed:', result.message);
       }
     } catch (error) {
       setSubmitStatus('error');
@@ -182,12 +199,12 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
             onChange={(e) => handleInputChange('firstName', e.target.value)}
             className={getInputClassName('firstName')}
             placeholder="Enter your first name"
-            disabled={isSubmitting}
           />
           {errors.firstName && (
             <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
           )}
         </div>
+
         <div>
           <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
             Last Name *
@@ -199,7 +216,6 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
             onChange={(e) => handleInputChange('lastName', e.target.value)}
             className={getInputClassName('lastName')}
             placeholder="Enter your last name"
-            disabled={isSubmitting}
           />
           {errors.lastName && (
             <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
@@ -220,12 +236,12 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
             onChange={(e) => handleInputChange('email', e.target.value)}
             className={getInputClassName('email')}
             placeholder="Enter your email address"
-            disabled={isSubmitting}
           />
           {errors.email && (
             <p className="mt-1 text-sm text-red-600">{errors.email}</p>
           )}
         </div>
+
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
             Phone Number
@@ -237,7 +253,6 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
             onChange={(e) => handleInputChange('phone', e.target.value)}
             className={getInputClassName('phone')}
             placeholder="Enter your phone number"
-            disabled={isSubmitting}
           />
           {errors.phone && (
             <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
@@ -245,7 +260,7 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
         </div>
       </div>
 
-      {/* Subject */}
+      {/* Subject Field */}
       <div>
         <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
           Subject *
@@ -255,22 +270,22 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
           value={formData.subject}
           onChange={(e) => handleInputChange('subject', e.target.value)}
           className={getInputClassName('subject')}
-          disabled={isSubmitting}
         >
           <option value="">Select a subject</option>
-          <option value="general">General Inquiry</option>
-          <option value="buying">Buying a Home</option>
-          <option value="selling">Selling a Home</option>
-          <option value="support">Customer Support</option>
-          <option value="partnership">Partnership</option>
-          <option value="other">Other</option>
+          <option value="General Inquiry">General Inquiry</option>
+          <option value="Property Inquiry">Property Inquiry</option>
+          <option value="Selling My Home">Selling My Home</option>
+          <option value="Buying a Home">Buying a Home</option>
+          <option value="Agent Services">Agent Services</option>
+          <option value="Technical Support">Technical Support</option>
+          <option value="Other">Other</option>
         </select>
         {errors.subject && (
           <p className="mt-1 text-sm text-red-600">{errors.subject}</p>
         )}
       </div>
 
-      {/* Message */}
+      {/* Message Field */}
       <div>
         <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
           Message *
@@ -282,14 +297,15 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
           onChange={(e) => handleInputChange('message', e.target.value)}
           className={getInputClassName('message')}
           placeholder="Tell us how we can help you..."
-          disabled={isSubmitting}
         />
-        {errors.message && (
-          <p className="mt-1 text-sm text-red-600">{errors.message}</p>
-        )}
-        <p className="mt-1 text-xs text-gray-500">
-          {formData.message.length}/1000 characters
-        </p>
+        <div className="flex justify-between mt-1">
+          {errors.message && (
+            <p className="text-sm text-red-600">{errors.message}</p>
+          )}
+          <p className="text-sm text-gray-500 ml-auto">
+            {formData.message.length}/1000 characters
+          </p>
+        </div>
       </div>
 
       {/* Newsletter Checkbox */}
@@ -300,25 +316,28 @@ export default function ContactForm({ onSubmit, className = '' }: ContactFormPro
           checked={formData.newsletter}
           onChange={(e) => handleInputChange('newsletter', e.target.checked)}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          disabled={isSubmitting}
         />
         <label htmlFor="newsletter" className="ml-2 block text-sm text-gray-700">
-          I'd like to receive updates about OnlyIf services and news
+          Subscribe to our newsletter for property updates and market insights
         </label>
       </div>
 
       {/* Submit Button */}
-      <div className="text-center">
+      <div>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white transition-colors ${
+            isSubmitting
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+          }`}
         >
           {isSubmitting ? (
             <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Sending...
             </>

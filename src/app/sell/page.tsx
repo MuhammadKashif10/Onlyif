@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import Navbar from '@/components/main/Navbar';
+import { Navbar } from '@/components';
 import Button from '@/components/reusable/Button';
 import HeroSection from '@/components/sections/HeroSection';
 

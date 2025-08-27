@@ -15,7 +15,7 @@ interface PropertyFormData {
   description: string;
   bedrooms: string;
   bathrooms: string;
-  squareFeet: string;
+  squareMeters: string; // Changed from squareFeet
   city: string;
   state: string;
   zipCode: string;
@@ -100,7 +100,7 @@ export default function AddProperty() {
       submitFormData.append('price', formData.price);
       submitFormData.append('beds', formData.bedrooms);
       submitFormData.append('baths', formData.bathrooms);
-      submitFormData.append('size', formData.squareFeet);
+      submitFormData.append('squareMeters', formData.squareMeters); // Changed from size
       submitFormData.append('description', formData.description);
       submitFormData.append('propertyType', formData.propertyType);
       submitFormData.append('yearBuilt', formData.yearBuilt);
@@ -139,7 +139,7 @@ export default function AddProperty() {
           description: '',
           bedrooms: '',
           bathrooms: '',
-          squareFeet: '',
+          squareMeters: '', // Changed from squareFeet
           city: '',
           state: '',
           zipCode: '',
@@ -279,14 +279,14 @@ export default function AddProperty() {
                     />
                     
                     <InputField
-                      label="Square Feet"
+                      label="Square Meters" {/* Changed from Square Feet */}
                       type="number"
-                      placeholder="Property size in sq ft"
-                      value={formData.squareFeet}
-                      onChange={(e) => handleInputChange('squareFeet', e.target.value)}
+                      placeholder="Property size in sq m" {/* Changed placeholder */}
+                      value={formData.squareMeters}
+                      onChange={(e) => handleInputChange('squareMeters', e.target.value)}
                       required
-                      id="squareFeet"
-                      name="squareFeet"
+                      id="squareMeters"
+                      name="squareMeters"
                     />
                   </div>
                   

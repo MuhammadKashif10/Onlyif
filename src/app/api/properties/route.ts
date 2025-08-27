@@ -230,12 +230,31 @@ export async function GET(request: NextRequest) {
       );
     }
   } else {
-    // Real API implementation would go here
-    // For now, return a placeholder response
-    return NextResponse.json(
-      { error: 'Real API not implemented yet' },
-      { status: 501 }
-    );
+    // Proxy to backend API
+    try {
+      const { searchParams } = new URL(request.url);
+      const backendUrl = `${process.env.NEXT_PUBLIC_API_URL}/properties?${searchParams.toString()}`;
+      
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Backend API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return NextResponse.json(data);
+    } catch (error) {
+      console.error('Error proxying to backend API:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch properties from backend' },
+        { status: 500 }
+      );
+    }
   }
 }
 
@@ -261,7 +280,7 @@ export async function POST(request: NextRequest) {
           price: parseFloat(formData.get('price')?.toString() || '0'),
           beds: parseInt(formData.get('beds')?.toString() || '0'),
           baths: parseFloat(formData.get('baths')?.toString() || '0'),
-          size: parseFloat(formData.get('size')?.toString() || '0'),
+          size: parseFloat(formData.get('squareMeters')?.toString() || '0'), // Changed from size
           propertyType: formData.get('propertyType')?.toString() || 'Single Family',
           yearBuilt: formData.get('yearBuilt') ? parseInt(formData.get('yearBuilt')?.toString() || '0') : new Date().getFullYear(),
           lotSize: formData.get('lotSize') ? parseFloat(formData.get('lotSize')?.toString() || '0') : 0.25,

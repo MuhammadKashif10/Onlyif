@@ -18,6 +18,7 @@ import {
 import { adminApi } from '@/api/admin';
 import { AdminAnalytics, AdminUser, AdminListing, FlaggedContent, PaymentRecord, Assignment, TermsLog } from '@/types/api';
 import { ADMIN_ROLES, FLAG_TYPES, FLAG_STATUS, PAYMENT_STATUS, PAYMENT_TYPES } from '@/utils/constants';
+import { formatCurrencyCompact } from '@/utils/currency';
 
 interface TabConfig {
   id: string;
@@ -665,7 +666,7 @@ function AdminDashboard() {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">{payment.userName}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">${payment.amount.toLocaleString()}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">{formatCurrencyCompact(payment.amount)}</td>
                 <td className="px-6 py-4">
                   <Badge variant={payment.status === 'completed' ? 'success' : payment.status === 'failed' ? 'danger' : 'warning'}>
                     {payment.status}

@@ -175,8 +175,8 @@ export default function RootLayout({
               {children}
             </main>
             <Footer 
-              logo="/logo.png"
-              logoText="OnlyIf"
+              logo="/logo.svg"
+              logoText=""
               description="Sell your home in days, not months. Get a competitive cash offer in 24 hours with no obligation."
               copyrightText="© 2025 OnlyIf. All rights reserved."
             />

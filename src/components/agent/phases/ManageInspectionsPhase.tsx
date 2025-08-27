@@ -45,38 +45,24 @@ export default function ManageInspectionsPhase() {
       
       setLoading(true);
       try {
-        // Mock inspection data
-        const mockInspections = [
-          {
-            id: '1',
-            propertyId: agentData.selectedProperty.id,
-            propertyName: agentData.selectedProperty.title,
-            date: '2024-03-25',
-            time: '10:00',
-            status: 'scheduled' as const,
-            inspector: 'Mike Johnson',
-            client: 'Sarah Wilson',
-            notes: 'First inspection - focus on electrical and plumbing',
-            address: agentData.selectedProperty.address
-          },
-          {
-            id: '2',
-            propertyId: agentData.selectedProperty.id,
-            propertyName: agentData.selectedProperty.title,
-            date: '2024-03-28',
-            time: '14:00',
-            status: 'completed' as const,
-            inspector: 'David Brown',
-            client: 'Tom Anderson',
-            notes: 'Completed - minor issues found in basement',
-            address: agentData.selectedProperty.address
+        // Use real API call to fetch inspections
+        const response = await fetch(`/api/inspections?propertyId=${agentData.selectedProperty.id}`, {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
           }
-        ];
+        });
         
-        setInspections(mockInspections);
-        updateAgentData({ inspections: mockInspections });
+        if (!response.ok) throw new Error('Failed to fetch inspections');
+        
+        const data = await response.json();
+        const inspections = data.data || data;
+        
+        setInspections(inspections);
+        updateAgentData({ inspections });
       } catch (error) {
         console.error('Error fetching inspections:', error);
+        setInspections([]);
       } finally {
         setLoading(false);
       }

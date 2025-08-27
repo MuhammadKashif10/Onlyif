@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useSellerContext } from '../../../context/SellerContext';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const SubmitPhase: React.FC = () => {
   const { data, clearSellerData } = useSellerContext();
+  const router = useRouter();
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -75,9 +77,10 @@ const SubmitPhase: React.FC = () => {
       const result = await response.json();
       setSubmitStatus('success');
       
-      // Clear the form data after successful submission
+      // Clear the form data and redirect to seller dashboard
       setTimeout(() => {
         clearSellerData();
+        router.push('/dashboards/seller'); // Redirect to seller dashboard
       }, 2000);
     } catch (err: any) {
       console.error('Property submission error:', err);
@@ -118,8 +121,8 @@ const SubmitPhase: React.FC = () => {
               <span className="font-medium">{data.bathrooms || 'Not specified'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Square Footage:</span>
-              <span className="font-medium">{data.squareFootage ? `${data.squareFootage} sq ft` : 'Not specified'}</span>
+              <span className="text-gray-600">Square Meters:</span>
+              <span className="font-medium">{data.squareFootage ? `${data.squareFootage} m²` : 'Not specified'}</span>
             </div>
           </div>
         </div>

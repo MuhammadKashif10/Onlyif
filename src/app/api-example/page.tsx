@@ -19,9 +19,9 @@ export default async function ApiExamplePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <Navbar
-        logo="/logo.png"
-        logoText="OnlyIf"
+      <Navbar 
+        logo="/logo.svg"
+        logoText=""
         navigationItems={[
           { label: 'Buy', href: '/browse', isActive: false },
           { label: 'Sell', href: '/sell', isActive: false },

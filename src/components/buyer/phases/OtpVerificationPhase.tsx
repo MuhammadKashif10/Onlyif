@@ -48,10 +48,9 @@ const OtpVerificationPhase: React.FC = () => {
       // Clear password data for security
       updateBuyerData({ password: '', confirmPassword: '' });
       
-      // Move to Browse Properties phase (Phase 3) within the wizard
+      // Move to Payment phase (Phase 3) within the wizard
       setPhase(3);
       
-      // Remove the router.push('/browse') line - stay in wizard flow
     } catch (err) {
       setErrors({ otp: 'Invalid or expired OTP. Please try again.' });
     }
@@ -115,7 +114,7 @@ const OtpVerificationPhase: React.FC = () => {
               disabled={isLoading || otp.length !== 6}
               className="w-full"
             >
-              {isLoading ? 'Verifying...' : 'Verify & Continue to Browse Properties'}
+              {isLoading ? 'Verifying...' : 'Verify & Continue to Payment'}
             </Button>
             
             <Button

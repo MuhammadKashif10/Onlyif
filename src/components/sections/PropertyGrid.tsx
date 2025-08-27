@@ -28,7 +28,10 @@ export default function PropertyGrid({
   className = '',
   onPropertyClick
 }: PropertyGridProps) {
-  const { properties: allProperties, loading: contextLoading } = usePropertyContext();
+  // Fix: Access properties from state instead of destructuring directly
+  const { state, loadProperties } = usePropertyContext();
+  const { properties: allProperties, loading: contextLoading, error: contextError } = state;
+  
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +41,14 @@ export default function PropertyGrid({
   const [filters, setFilters] = useState<FilterOptions>({});
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter and paginate properties
+  // Filter and paginate properties with array safety checks
   useEffect(() => {
     try {
       setLoading(true);
       setError(null);
 
-      let properties = [...allProperties];
+      // Fix: Ensure allProperties is an array before spreading
+      let properties = Array.isArray(allProperties) ? [...allProperties] : [];
 
       // Apply featured filter
       if (featuredOnly) {
@@ -163,6 +167,18 @@ export default function PropertyGrid({
     );
   }
 
+  // Show context error if properties failed to load from API
+  if (contextError && (!Array.isArray(allProperties) || allProperties.length === 0)) {
+    return (
+      <div className={`property-grid ${className}`}>
+        <LoadingError 
+          message={contextError}
+          onRetry={loadProperties}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       {/* Filters */}
@@ -187,7 +203,7 @@ export default function PropertyGrid({
       )}
 
       {/* Properties Grid */}
-      {filteredProperties.length > 0 ? (
+      {Array.isArray(filteredProperties) && filteredProperties.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProperties.map((property) => (

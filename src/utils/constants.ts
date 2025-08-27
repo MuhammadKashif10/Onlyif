@@ -155,13 +155,15 @@ export const ADDON_TYPES = {
 } as const;
 
 // Price Ranges
+import { formatCurrencyCompact } from './currency';
+
 export const PRICE_RANGES = [
-  { label: 'Under $100,000', min: 0, max: 100000 },
-  { label: '$100,000 - $200,000', min: 100000, max: 200000 },
-  { label: '$200,000 - $300,000', min: 200000, max: 300000 },
-  { label: '$300,000 - $400,000', min: 300000, max: 400000 },
-  { label: '$400,000 - $500,000', min: 400000, max: 500000 },
-  { label: '$500,000+', min: 500000, max: null },
+  { label: `Under ${formatCurrencyCompact(100000)}`, min: 0, max: 100000 },
+  { label: `${formatCurrencyCompact(100000)} - ${formatCurrencyCompact(200000)}`, min: 100000, max: 200000 },
+  { label: `${formatCurrencyCompact(200000)} - ${formatCurrencyCompact(300000)}`, min: 200000, max: 300000 },
+  { label: `${formatCurrencyCompact(300000)} - ${formatCurrencyCompact(400000)}`, min: 300000, max: 400000 },
+  { label: `${formatCurrencyCompact(400000)} - ${formatCurrencyCompact(500000)}`, min: 400000, max: 500000 },
+  { label: `${formatCurrencyCompact(500000)}+`, min: 500000, max: null },
 ] as const;
 
 // Bedroom Options

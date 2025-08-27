@@ -1,3 +1,5 @@
+import { formatCurrencyCompact } from '@/utils/currency';
+
 interface FeeBreakdownProps {
   offerAmount: number;
   fees: {
@@ -15,17 +17,18 @@ export default function FeeBreakdown({
   netProceeds,
   className = ""
 }: FeeBreakdownProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Remove the old formatCurrency function
+  // const formatCurrency = (amount: number) => {
+  //   return new Intl.NumberFormat('en-US', {
+  //     style: 'currency',
+  //     currency: 'USD',
+  //     minimumFractionDigits: 0,
+  //     maximumFractionDigits: 0,
+  //   }).format(amount);
+  // };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+    <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Offer Breakdown</h3>
       
       {/* Offer Amount */}
@@ -91,4 +94,4 @@ export default function FeeBreakdown({
       </div>
     </div>
   );
-} 
+}

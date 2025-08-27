@@ -1,23 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { offersApi } from '@/api';
-import Navbar from '@/components/main/Navbar';
-import Footer from '@/components/main/Footer';
-import ProgressStepper from '@/components/reusable/ProgressStepper';
-import OfferResultCard from '@/components/reusable/OfferResultCard';
+import { formatCurrency } from '@/utils/currency';
+import Button from '@/components/reusable/Button';
+import Loader from '@/components/reusable/Loader';
+import GetCashOffer from '@/components/seller/GetCashOffer';
+
+interface FormData {
+  address: string;
+  suburb: string;
+  state: string;
+  postcode: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+interface PropertyEstimate {
+  estimatedValue: number;
+  lowRange: number;
+  highRange: number;
+  confidence: string;
+  formattedRange: string;
+  lastUpdated: string;
+  propertyDetails?: {
+    type?: string;
+    landSize?: number;
+    buildingArea?: number;
+  };
+}
+
+const australianStates = [
+  { code: 'NSW', name: 'New South Wales' },
+  { code: 'VIC', name: 'Victoria' },
+  { code: 'QLD', name: 'Queensland' },
+  { code: 'WA', name: 'Western Australia' },
+  { code: 'SA', name: 'South Australia' },
+  { code: 'TAS', name: 'Tasmania' },
+  { code: 'ACT', name: 'Australian Capital Territory' },
+  { code: 'NT', name: 'Northern Territory' }
+];
 
 export default function GetOfferPage() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     address: '',
-    zipCode: '',
+    suburb: '',
+    state: '',
+    postcode: '',
     name: '',
     email: '',
     phone: ''
   });
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoadingEstimate, setIsLoadingEstimate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [propertyEstimate, setPropertyEstimate] = useState<PropertyEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
   const [offerResult, setOfferResult] = useState<any>(null);
   const router = useRouter();
 
@@ -28,278 +68,202 @@ export default function GetOfferPage() {
     { id: 'close', title: 'Close & Move', description: 'Complete the sale' }
   ];
 
-  const validateForm = () => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
+      newErrors.address = 'Property address is required';
     }
-
-    if (!formData.zipCode.trim()) {
-      newErrors.zipCode = 'ZIP code is required';
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zipCode)) {
-      newErrors.zipCode = 'Please enter a valid ZIP code';
+    if (!formData.suburb.trim()) {
+      newErrors.suburb = 'Suburb is required';
     }
-
+    if (!formData.state) {
+      newErrors.state = 'State is required';
+    }
+    if (!formData.postcode.trim()) {
+      newErrors.postcode = 'Postcode is required';
+    } else if (!/^\d{4}$/.test(formData.postcode)) {
+      newErrors.postcode = 'Please enter a valid 4-digit postcode';
+    }
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     }
-
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleGetEstimate = async () => {
+    // Validate address fields only
+    const addressErrors: Record<string, string> = {};
+    
+    if (!formData.address.trim()) {
+      addressErrors.address = 'Property address is required';
+    }
+    if (!formData.suburb.trim()) {
+      addressErrors.suburb = 'Suburb is required';
+    }
+    if (!formData.state) {
+      addressErrors.state = 'State is required';
+    }
+    if (!formData.postcode.trim()) {
+      addressErrors.postcode = 'Postcode is required';
+    } else if (!/^\d{4}$/.test(formData.postcode)) {
+      addressErrors.postcode = 'Please enter a valid 4-digit postcode';
+    }
+
+    if (Object.keys(addressErrors).length > 0) {
+      setErrors(addressErrors);
+      return;
+    }
+
+    setIsLoadingEstimate(true);
+    setEstimateError(null);
+    setPropertyEstimate(null);
+
+    try {
+      const response = await fetch('/api/estimate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: formData.address,
+          suburb: formData.suburb,
+          state: formData.state,
+          postcode: formData.postcode
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get property estimate');
+      }
+
+      setPropertyEstimate(data.data);
+    } catch (error) {
+      console.error('Estimate error:', error);
+      setEstimateError(error instanceof Error ? error.message : 'Failed to get property estimate');
+    } finally {
+      setIsLoadingEstimate(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      // Use the offers API to submit the offer request
-      const response = await offersApi.submitOfferRequest(formData);
+      const response = await fetch('/api/cash-offers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: `${formData.address}, ${formData.suburb}, ${formData.state} ${formData.postcode}`,
+          zipCode: formData.postcode,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          estimatedValue: propertyEstimate?.estimatedValue
+        })
+      });
 
-      if (response.success) {
-        setOfferResult({
-          offerId: response.offerId || `OFF-${Date.now()}`,
-          estimatedValue: response.estimatedValue || 450000,
-          propertyType: 'Single Family Home',
-          bedrooms: 3,
-          bathrooms: 2,
-          squareFootage: 1800,
-          estimatedClosingDate: 'Within 7-14 days',
-          message: response.message,
-          nextSteps: response.nextSteps
-        });
+      const data = await response.json();
+
+      if (data.success) {
+        setOfferResult(data.data);
       } else {
-        throw new Error(response.message || 'Failed to get offer');
+        throw new Error(data.message || 'Failed to submit offer request');
       }
     } catch (error) {
-      console.error('Error getting offer:', error);
-      setErrors({ submit: 'Failed to get offer. Please try again.' });
+      console.error('Submit error:', error);
+      setErrors({ submit: error instanceof Error ? error.message : 'Failed to submit offer request' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const handleAcceptOffer = () => {
-    router.push('/sell/schedule-inspection');
-  };
-
-  const handleDeclineOffer = () => {
-    router.push('/browse');
-  };
-
   if (offerResult) {
     return (
-      <div className="min-h-screen">
-        <Navbar />
-        
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <ProgressStepper steps={steps} currentStep={0} className="mb-8" />
-            
-            <div className="max-w-2xl mx-auto">
-              <OfferResultCard
-                estimatedValue={offerResult.estimatedValue}
-                address={formData.address}
-                propertyType={offerResult.propertyType}
-                bedrooms={offerResult.bedrooms}
-                bathrooms={offerResult.bathrooms}
-                squareFootage={offerResult.squareFootage}
-                estimatedClosingDate={offerResult.estimatedClosingDate}
-                onAccept={handleAcceptOffer}
-                onDecline={handleDeclineOffer}
-              />
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Success Result */}
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
             </div>
+            
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Offer Submitted Successfully!</h1>
+            <p className="text-gray-600 mb-6">Your cash offer request has been submitted. We'll review your property and get back to you within 24 hours.</p>
+            
+            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-semibold mb-4">Offer Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div>
+                  <span className="font-medium text-gray-700">Offer ID:</span>
+                  <p className="text-gray-900">{offerResult.offerId}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Estimated Value:</span>
+                  <p className="text-gray-900">{formatCurrency(offerResult.estimatedValue)}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Offer Amount:</span>
+                  <p className="text-green-600 font-semibold">{formatCurrency(offerResult.offerAmount)}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Expected Closing:</span>
+                  <p className="text-gray-900">{offerResult.estimatedClosingDate}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2 mb-6">
+              <h4 className="font-semibold text-gray-900">Next Steps:</h4>
+              {offerResult.nextSteps?.map((step: string, index: number) => (
+                <p key={index} className="text-gray-600">• {step}</p>
+              ))}
+            </div>
+            
+            <Button
+              onClick={() => router.push('/dashboards/seller')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Go to Dashboard
+            </Button>
           </div>
         </div>
-        
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <ProgressStepper steps={steps} currentStep={0} className="mb-8" />
-          
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">Get Your Cash Offer</h1>
-                <p className="text-gray-600">
-                  Enter your property details to receive a competitive cash offer within 24 hours.
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Address */}
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                    Property Address *
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.address ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter your property address"
-                  />
-                  {errors.address && (
-                    <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-                  )}
-                </div>
-
-                {/* ZIP Code */}
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-2">
-                    ZIP Code *
-                  </label>
-                  <input
-                    type="text"
-                    id="zipCode"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.zipCode ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter ZIP code"
-                  />
-                  {errors.zipCode && (
-                    <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>
-                  )}
-                </div>
-
-                {/* Name */}
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter your full name"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter your email address"
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.phone ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter your phone number (optional)"
-                  />
-                  {errors.phone && (
-                    <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                  )}
-                </div>
-
-                {/* Submit Error */}
-                {errors.submit && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-red-600 text-sm">{errors.submit}</p>
-                  </div>
-                )}
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Getting Your Offer...
-                    </div>
-                  ) : (
-                    'Get My Cash Offer'
-                  )}
-                </button>
-
-                <p className="text-xs text-gray-500 text-center">
-                  By submitting this form, you agree to receive communications from OnlyIf. 
-                  No obligation to sell. Privacy Policy applies.
-                </p>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Remove this line: <Footer /> */}
+    <div className="min-h-screen bg-gray-50 py-12">
+      <GetCashOffer />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components';
 import { InputField, Button, Alert } from '@/components/reusable';
@@ -9,26 +9,16 @@ import Link from 'next/link';
 
 export default function SignInPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { login, adminLogin, user, isLoading } = useAuth();
+  const { login, user, isLoading, error } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [userType, setUserType] = useState('buyer');
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
-    // Get user type from URL params
-    const type = searchParams.get('type');
-    if (type && ['buyer', 'seller', 'agent', 'admin'].includes(type)) {
-      setUserType(type);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    // Redirect if already authenticated
+    // Redirect if already authenticated based on userType from database
     if (user) {
       switch (user.role) {
         case 'buyer':
@@ -50,46 +40,32 @@ export default function SignInPage() {
   }, [user, router]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setError(''); // Clear error when user starts typing
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user starts typing
+    if (loginError) setLoginError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
+    setLoginError('');
 
     try {
-      if (userType === 'admin') {
-        await adminLogin(formData.email, formData.password);
-      } else {
-        await login(formData.email, formData.password);
-      }
-      // Redirect will be handled by useEffect above
+      // Use unified login - backend will determine user role and return appropriate data
+      await login(formData.email, formData.password);
+      // Redirect will happen automatically via useEffect when user state updates
     } catch (err: any) {
-      setError(err.message || 'Sign in failed. Please check your credentials.');
+      setLoginError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getUserTypeTitle = () => {
-    switch (userType) {
-      case 'buyer': return 'Buyer';
-      case 'seller': return 'Seller';
-      case 'agent': return 'Agent';
-      case 'admin': return 'Admin';
-      default: return 'User';
-    }
-  };
-
-  const getRegistrationLink = () => {
-    switch (userType) {
-      case 'buyer': return '/dashboards/buyer/create-account';
-      case 'seller': return '/dashboards/seller/register';
-      case 'agent': return '/dashboards/agent/register';
-      default: return '/dashboards/create-account';
-    }
+  const validateForm = () => {
+    return formData.email.trim() !== '' && formData.password.trim() !== '';
   };
 
   return (
@@ -105,35 +81,20 @@ export default function SignInPage() {
               </svg>
             </div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Sign in as {getUserTypeTitle()}
+              Sign in to your account
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Welcome back! Please sign in to your account.
+              Welcome back! Enter your credentials to access your dashboard.
             </p>
           </div>
 
-          {/* User Type Selector */}
-          <div className="flex justify-center space-x-4">
-            {['buyer', 'seller', 'agent'].map((type) => (
-              <button
-                key={type}
-                onClick={() => setUserType(type)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  userType === type
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
-            ))}
-          </div>
-
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <Alert variant="error" className="mb-4">
-                {error}
-              </Alert>
+            {(loginError || error) && (
+              <Alert 
+                type="error" 
+                message={loginError || error || 'An error occurred during sign in'} 
+                className="mb-4" 
+              />
             )}
 
             <div className="space-y-4">
@@ -142,9 +103,10 @@ export default function SignInPage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Enter your email"
+                placeholder="Enter your email address"
                 required
                 disabled={isSubmitting}
+                autoComplete="email"
               />
 
               <InputField
@@ -155,6 +117,7 @@ export default function SignInPage() {
                 placeholder="Enter your password"
                 required
                 disabled={isSubmitting}
+                autoComplete="current-password"
               />
             </div>
 
@@ -170,19 +133,36 @@ export default function SignInPage() {
               type="submit"
               variant="primary"
               size="lg"
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading || !validateForm()}
               className="w-full"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link href={getRegistrationLink()} className="font-medium text-blue-600 hover:text-blue-500">
-                  Create one here
-                </Link>
+              <p className="text-center text-sm text-gray-600 mb-4">
+                Don't have an account? Create one here:
               </p>
+              <div className="flex flex-row justify-center space-x-4 mt-2">
+                <Link 
+                  href="/sell/onboard" 
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors duration-200 min-w-[80px] text-center"
+                >
+                  Seller
+                </Link>
+                <Link 
+                  href="/buy/onboard" 
+                  className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors duration-200 min-w-[80px] text-center"
+                >
+                  Buyer
+                </Link>
+                <Link 
+                  href="/dashboards/agent/register" 
+                  className="px-4 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors duration-200 min-w-[80px] text-center"
+                >
+                  Agent
+                </Link>
+              </div>
             </div>
           </form>
         </div>

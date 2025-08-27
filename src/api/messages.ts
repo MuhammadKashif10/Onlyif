@@ -1,6 +1,8 @@
 import { USE_MOCKS, withMockFallback } from '@/utils/mockWrapper';
 import { request } from '@/utils/api';
 import { Conversation, Message } from '@/types/api';
+import { apiClient } from '../lib/api-client';
+import { Message, MessageThread, PaginatedResponse } from '../types/api';
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -290,11 +292,229 @@ export async function createConversation(conversationData: {
   );
 }
 
-// Legacy API for backward compatibility
+// Remove all mock data and implement real API calls
 export const messagesApi = {
-  getThreads: (userId: string) => getConversations(userId),
-  getMessages: (threadId: string) => getConversationMessages(threadId),
-  sendMessage: (messageData: any) => sendMessage(messageData),
-  markAsRead: (threadId: string, userId: string) => markConversationAsRead(threadId, userId),
-  createThread: (threadData: any) => createConversation(threadData)
+  // Get user's conversations/threads
+  async getConversations(params: ThreadSearchParams = {}): Promise<PaginatedResponse<MessageThread>> {
+    try {
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+      
+      const response = await apiClient.get(`/messages/threads?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw new Error('Failed to fetch conversations');
+    }
+  },
+
+  // Get messages in a thread with pagination
+  async getMessages(threadId: string, params: MessageSearchParams = {}): Promise<PaginatedResponse<Message>> {
+    try {
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+      
+      const response = await apiClient.get(`/messages/threads/${threadId}/messages?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw new Error('Failed to fetch messages');
+    }
+  },
+
+  // Send a new message
+  async sendMessage(threadId: string, messageData: {
+    text?: string;
+    messageType?: string;
+    attachments?: File[];
+    replyTo?: string;
+  }): Promise<Message> {
+    try {
+      const formData = new FormData();
+      
+      if (messageData.text) {
+        formData.append('text', messageData.text);
+      }
+      if (messageData.messageType) {
+        formData.append('messageType', messageData.messageType);
+      }
+      if (messageData.replyTo) {
+        formData.append('replyTo', messageData.replyTo);
+      }
+      
+      // Add attachments if any
+      if (messageData.attachments && messageData.attachments.length > 0) {
+        messageData.attachments.forEach((file, index) => {
+          formData.append('attachments', file);
+        });
+      }
+      
+      const response = await apiClient.post(
+        `/messages/threads/${threadId}/messages`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw new Error('Failed to send message');
+    }
+  },
+
+  // Create a new conversation/thread
+  async createConversation(conversationData: {
+    propertyId: string;
+    participantIds: string[];
+    subject?: string;
+    type?: string;
+    initialMessage?: string;
+  }): Promise<MessageThread> {
+    try {
+      const response = await apiClient.post('/messages/threads', conversationData);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      throw new Error('Failed to create conversation');
+    }
+  },
+
+  // Mark messages as read
+  async markAsRead(threadId: string, messageIds?: string[]): Promise<void> {
+    try {
+      const payload = messageIds ? { messageIds } : {};
+      await apiClient.post(`/messages/threads/${threadId}/read`, payload);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      throw new Error('Failed to mark messages as read');
+    }
+  },
+
+  // Get unread message count
+  async getUnreadCount(): Promise<{ count: number }> {
+    try {
+      const response = await apiClient.get('/messages/unread-count');
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      throw new Error('Failed to fetch unread count');
+    }
+  },
+
+  // Search messages
+  async searchMessages(query: string, params: MessageSearchParams = {}): Promise<PaginatedResponse<Message>> {
+    try {
+      const searchParams = {
+        ...params,
+        search: query
+      };
+      
+      const response = await apiClient.post('/messages/search', searchParams);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      throw new Error('Failed to search messages');
+    }
+  },
+
+  // Add reaction to message
+  async addReaction(messageId: string, emoji: string): Promise<void> {
+    try {
+      await apiClient.post(`/messages/${messageId}/reactions`, { emoji });
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      throw new Error('Failed to add reaction');
+    }
+  },
+
+  // Remove reaction from message
+  async removeReaction(messageId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/messages/${messageId}/reactions`);
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      throw new Error('Failed to remove reaction');
+    }
+  },
+
+  // Edit message
+  async editMessage(messageId: string, newText: string): Promise<Message> {
+    try {
+      const response = await apiClient.put(`/messages/${messageId}`, { text: newText });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error editing message:', error);
+      throw new Error('Failed to edit message');
+    }
+  },
+
+  // Delete message (soft delete)
+  async deleteMessage(messageId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/messages/${messageId}`);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw new Error('Failed to delete message');
+    }
+  },
+
+  // Update thread status
+  async updateThreadStatus(threadId: string, status: string): Promise<MessageThread> {
+    try {
+      const response = await apiClient.put(`/messages/threads/${threadId}/status`, { status });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating thread status:', error);
+      throw new Error('Failed to update thread status');
+    }
+  },
+
+  // Add participant to thread
+  async addParticipant(threadId: string, userId: string, role: string): Promise<MessageThread> {
+    try {
+      const response = await apiClient.post(`/messages/threads/${threadId}/participants`, {
+        userId,
+        role
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error adding participant:', error);
+      throw new Error('Failed to add participant');
+    }
+  },
+
+  // Remove participant from thread
+  async removeParticipant(threadId: string, userId: string): Promise<MessageThread> {
+    try {
+      const response = await apiClient.delete(`/messages/threads/${threadId}/participants/${userId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error removing participant:', error);
+      throw new Error('Failed to remove participant');
+    }
+  },
+
+  // Get thread details
+  async getThreadById(threadId: string): Promise<MessageThread> {
+    try {
+      const response = await apiClient.get(`/messages/threads/${threadId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching thread:', error);
+      throw new Error('Failed to fetch thread details');
+    }
+  }
 };
+
+export default messagesApi;

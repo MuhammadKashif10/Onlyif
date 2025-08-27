@@ -1,8 +1,9 @@
 import { USE_MOCKS, withMockFallback } from '@/utils/mockWrapper';
 import { request } from '@/utils/api';
-import { Property, FilterOptions, PaginationOptions, SearchOptions } from '@/types/api';
+import { Property, FilterOptions, PaginationOptions, SearchOptions, FilterOptionsData } from '@/types/api';
+import { apiClient } from '../lib/api-client';
+import { PaginatedPropertiesResponse, PropertySearchParams } from '../types/api';
 
-// Move the interface definition to the top level
 interface PaginatedPropertiesResponse {
   properties: Property[];
   total: number;
@@ -13,7 +14,6 @@ interface PaginatedPropertiesResponse {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock property data
 const mockProperties = [
   {
     id: '1',
@@ -538,227 +538,394 @@ const mockProperties = [
 ];
 
 export const propertiesApi = {
-  // Get all properties with filtering and pagination
-  // Update the getProperties function with explicit return type
-  async getProperties(
-    filters: Partial<FilterOptions> = {},
-    pagination: PaginationOptions = { page: 1, limit: 12 }
-  ): Promise<PaginatedPropertiesResponse> {
+  async getProperties(params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
-      // Real API call
-      async (): Promise<PaginatedPropertiesResponse> => {
-        const queryParams = new URLSearchParams();
-        
-        // Add filters to query params
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== '') {
-            queryParams.append(key, value.toString());
-          }
-        });
-        
-        // Add pagination params
-        queryParams.append('page', pagination.page.toString());
-        queryParams.append('limit', pagination.limit.toString());
-        
-        const response = await request(`/properties?${queryParams.toString()}`);
-        return response;
-      },
-      // Mock fallback
-      async (): Promise<PaginatedPropertiesResponse> => {
+      // Mock implementation
+      async () => {
         await delay(500);
+        const { page = 1, limit = 10, search, minPrice, maxPrice, beds, baths, propertyType, city } = params;
+        
+        let filteredProperties = [...mockProperties];
+        
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filteredProperties = filteredProperties.filter(p => 
+            p.title.toLowerCase().includes(searchLower) ||
+            p.description.toLowerCase().includes(searchLower) ||
+            p.address.toLowerCase().includes(searchLower)
+          );
+        }
+        
+        if (minPrice) filteredProperties = filteredProperties.filter(p => p.price >= minPrice);
+        if (maxPrice) filteredProperties = filteredProperties.filter(p => p.price <= maxPrice);
+        if (beds) filteredProperties = filteredProperties.filter(p => p.beds >= beds);
+        if (baths) filteredProperties = filteredProperties.filter(p => p.baths >= baths);
+        if (propertyType) filteredProperties = filteredProperties.filter(p => p.propertyType === propertyType);
+        if (city) filteredProperties = filteredProperties.filter(p => p.city.toLowerCase() === city.toLowerCase());
+        
+        const total = filteredProperties.length;
+        const totalPages = Math.ceil(total / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const properties = filteredProperties.slice(startIndex, endIndex);
+        
         return {
-          properties: mockProperties.slice(0, pagination.limit),
-          total: mockProperties.length,
-          page: pagination.page,
-          limit: pagination.limit,
-          totalPages: Math.ceil(mockProperties.length / pagination.limit)
+          properties,
+          total,
+          page,
+          limit,
+          totalPages
         };
+      },
+      // Real API call with validation
+      async () => {
+        try {
+          const response = await apiClient.get('/properties', { params });
+          const data = response.data;
+          
+          // Validate and ensure proper structure
+          if (!data || typeof data !== 'object') {
+            console.warn('Invalid API response structure, using fallback');
+            return {
+              properties: [],
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            };
+          }
+          
+          // Ensure properties is always an array
+          const properties = Array.isArray(data.properties) ? data.properties : 
+                           Array.isArray(data) ? data : [];
+          
+          return {
+            properties,
+            total: data.total || properties.length,
+            page: data.page || 1,
+            limit: data.limit || 10,
+            totalPages: data.totalPages || Math.ceil((data.total || properties.length) / (data.limit || 10))
+          };
+        } catch (error) {
+          console.error('API call failed:', error);
+          // Return safe fallback structure
+          return {
+            properties: [],
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          };
+        }
       }
     );
   },
 
-  // Get property by ID
-  // Get property by ID
-  async getPropertyById(id: string) {
+  async getPropertyById(id: string): Promise<Property> {
     return withMockFallback(
       // Mock implementation
       async () => {
         await delay(500);
         const property = mockProperties.find(p => p.id === id);
         if (!property) {
-          return null; // Return null instead of throwing error
+          throw new Error('Property not found');
         }
         return property;
       },
       // Real API call
       async () => {
-        try {
-          const response = await request(`/properties/${id}`);
-          return response.data;
-        } catch (error: any) {
-          // Handle 404 errors gracefully
-          if (error.status === 404) {
-            return null;
-          }
-          throw error; // Re-throw other errors
-        }
-      }
-    );
-  },
-
-  // Get featured properties
-  async getFeaturedProperties(limit: number = 6) {
-    return withMockFallback(
-      // Mock implementation
-      async (): Promise<Property[]> => {
-        await delay(600);
-        return mockProperties.filter(p => p.featured).slice(0, limit);
-      },
-      // Real API call
-      async (): Promise<Property[]> => {
-        const response = await request(`/properties?featured=true&limit=${limit}`);
+        const response = await apiClient.get(`/properties/${id}`);
         return response.data;
       }
     );
   },
 
-  // Search properties
-  async searchProperties(query: string, filters?: FilterOptions) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(700);
-        let results = mockProperties.filter(p => 
-          p.title.toLowerCase().includes(query.toLowerCase()) ||
-          p.address.toLowerCase().includes(query.toLowerCase()) ||
-          p.description.toLowerCase().includes(query.toLowerCase())
-        );
-        
-        // Apply additional filters if provided
-        if (filters?.city) {
-          results = results.filter(p => 
-            p.address.toLowerCase().includes(filters.city!.toLowerCase())
-          );
-        }
-        if (filters?.minPrice) {
-          results = results.filter(p => p.price >= filters.minPrice!);
-        }
-        if (filters?.maxPrice) {
-          results = results.filter(p => p.price <= filters.maxPrice!);
-        }
-        
-        return results;
-      },
-      // Real API call
-      async () => {
-        const params = new URLSearchParams({ q: query });
-        if (filters?.city) params.append('city', filters.city);
-        if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
-        if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
-        
-        const response = await request(`/properties/search?${params}`);
-        return response.data;
-      }
-    );
+  async searchProperties(params: PropertySearchParams): Promise<PaginatedPropertiesResponse> {
+    return this.getProperties(params);
   },
 
-  // Get property statistics
-  async getPropertyStats() {
+  async getPropertiesNearLocation(
+    latitude: number, 
+    longitude: number, 
+    radius: number = 10,
+    filters: Partial<PropertySearchParams> = {}
+  ): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
       // Mock implementation
       async () => {
-        await delay(400);
-        const totalProperties = mockProperties.length;
-        const averagePrice = mockProperties.reduce((sum, p) => sum + p.price, 0) / totalProperties;
-        const propertyTypes = [...new Set(mockProperties.map(p => p.propertyType))];
+        await delay(500);
+        // Simple distance calculation for mock data
+        const nearbyProperties = mockProperties.filter(property => {
+          const distance = Math.sqrt(
+            Math.pow(property.coordinates.lat - latitude, 2) + 
+            Math.pow(property.coordinates.lng - longitude, 2)
+          ) * 111; // Rough conversion to km
+          return distance <= radius;
+        });
         
         return {
-          totalProperties,
-          averagePrice: Math.round(averagePrice),
-          propertyTypes,
-          featuredCount: mockProperties.filter(p => p.featured).length
+          properties: nearbyProperties,
+          total: nearbyProperties.length,
+          page: 1,
+          limit: nearbyProperties.length,
+          totalPages: 1
         };
       },
       // Real API call
       async () => {
-        const response = await request('/properties/stats');
+        const response = await apiClient.get('/properties/near', {
+          params: { latitude, longitude, radius, ...filters }
+        });
         return response.data;
       }
     );
   },
 
-  // Get filter options
-  async getFilterOptions() {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(300);
-        const propertyTypes = [...new Set(mockProperties.map(p => p.propertyType))];
-        const cities = [...new Set(mockProperties.map(p => {
-          const addressParts = p.address.split(', ');
-          return addressParts[addressParts.length - 2]; // Get city from address
-        }))];
-        const prices = mockProperties.map(p => p.price);
-        const sizes = mockProperties.map(p => p.size);
-        
-        return {
-          propertyTypes,
-          cities,
-          priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
-          sizeRange: { min: Math.min(...sizes), max: Math.max(...sizes) }
-        };
-      },
-      // Real API call
-      async () => {
-        const response = await request('/properties/filter-options');
-        return response.data;
-      }
-    );
-  },
-
-  // Submit property
-  async submitProperty(propertyData: any) {
+  async submitProperty(propertyData: Partial<Property>): Promise<Property> {
     return withMockFallback(
       // Mock implementation
       async () => {
         await delay(1000);
-        // Simulate successful submission
+        const newProperty = {
+          ...propertyData,
+          id: Date.now().toString(),
+          dateListed: new Date().toISOString().split('T')[0],
+          daysOnMarket: 0
+        } as Property;
+        return newProperty;
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.post('/properties', propertyData);
+        return response.data;
+      }
+    );
+  },
+
+  async updateProperty(id: string, propertyData: Partial<Property>): Promise<Property> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        const existingProperty = mockProperties.find(p => p.id === id);
+        if (!existingProperty) {
+          throw new Error('Property not found');
+        }
+        return { ...existingProperty, ...propertyData };
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.put(`/properties/${id}`, propertyData);
+        return response.data;
+      }
+    );
+  },
+
+  async deleteProperty(id: string): Promise<void> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        // In real implementation, this would remove from array
+        console.log(`Mock: Deleted property ${id}`);
+      },
+      // Real API call
+      async () => {
+        await apiClient.delete(`/properties/${id}`);
+      }
+    );
+  },
+
+  async getFeaturedProperties(limit: number = 6): Promise<Property[]> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        return mockProperties.filter(p => p.featured).slice(0, limit);
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.get('/properties/featured', {
+          params: { limit }
+        });
+        return response.data;
+      }
+    );
+  },
+
+  async getPropertyStats(): Promise<any> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
         return {
-          success: true,
-          data: {
-            id: `prop-${Date.now()}`,
-            ...propertyData,
-            status: 'pending_review',
-            submittedAt: new Date().toISOString()
-          },
-          message: 'Property submitted successfully and is under review'
+          totalProperties: mockProperties.length,
+          averagePrice: mockProperties.reduce((sum, p) => sum + p.price, 0) / mockProperties.length,
+          propertyTypes: [...new Set(mockProperties.map(p => p.propertyType))],
+          cities: [...new Set(mockProperties.map(p => p.city))]
         };
       },
       // Real API call
       async () => {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/properties/public-submit`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(propertyData),
+        const response = await apiClient.get('/properties/stats');
+        return response.data;
+      }
+    );
+  },
+
+  async uploadPropertyImages(propertyId: string, images: File[]): Promise<string[]> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(2000);
+        // Return mock URLs
+        return images.map((_, index) => 
+          `https://images.unsplash.com/photo-${Date.now()}-${index}?w=800&h=600&fit=crop`
+        );
+      },
+      // Real API call
+      async () => {
+        const formData = new FormData();
+        images.forEach((image, index) => {
+          formData.append(`images`, image);
         });
+        
+        const response = await apiClient.post(`/properties/${propertyId}/images`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        return response.data.imageUrls;
+      }
+    );
+  },
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to submit property');
+  async getPropertyBySlug(slug: string): Promise<Property> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        // Convert slug back to ID for mock data
+        const id = slug.split('-').pop();
+        const property = mockProperties.find(p => p.id === id);
+        if (!property) {
+          throw new Error('Property not found');
         }
+        return property;
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.get(`/properties/slug/${slug}`);
+        return response.data;
+      }
+    );
+  },
 
-        const data = await response.json();
+  async getPropertiesByOwner(ownerId: string, params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        // Filter by agent ID for mock data
+        const ownerProperties = mockProperties.filter(p => p.agent.id === ownerId);
         return {
-          success: true,
-          data: data,
-          message: 'Property submitted successfully'
+          properties: ownerProperties,
+          total: ownerProperties.length,
+          page: params.page || 1,
+          limit: params.limit || 10,
+          totalPages: Math.ceil(ownerProperties.length / (params.limit || 10))
+        };
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.get(`/properties/owner/${ownerId}`, {
+          params
+        });
+        return response.data;
+      }
+    );
+  },
+
+  async toggleFavorite(propertyId: string): Promise<{ isFavorite: boolean }> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(300);
+        // Mock toggle logic
+        const isFavorite = Math.random() > 0.5;
+        return { isFavorite };
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.post(`/properties/${propertyId}/favorite`);
+        return response.data;
+      }
+    );
+  },
+
+  async getFavoriteProperties(params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
+    return withMockFallback(
+      // Mock implementation
+      async () => {
+        await delay(500);
+        // Return a subset of mock properties as favorites
+        const favoriteProperties = mockProperties.slice(0, 3);
+        return {
+          properties: favoriteProperties,
+          total: favoriteProperties.length,
+          page: params.page || 1,
+          limit: params.limit || 10,
+          totalPages: 1
+        };
+      },
+      // Real API call
+      async () => {
+        const response = await apiClient.get('/properties/favorites', {
+          params
+        });
+        return response.data;
+      }
+    );
+  },
+  async getFilterOptions(): Promise<FilterOptionsData> {
+    return withMockFallback(
+      async () => {
+        await delay(500);
+        const response = await apiClient.get('/api/properties/filter-options');
+        return response.data;
+      },
+      async () => {
+        await delay(300);
+        
+        // Extract unique values from mock data
+        const propertyTypes = [...new Set(mockProperties.map(p => p.propertyType))];
+        const cities = [...new Set(mockProperties.map(p => p.city))];
+        const prices = mockProperties.map(p => p.price);
+        const sizes = mockProperties.map(p => p.size); // Already in square meters
+        
+        return {
+          propertyTypes,
+          cities,
+          priceRange: {
+            min: Math.min(...prices),
+            max: Math.max(...prices)
+          },
+          sizeRange: {
+            min: Math.min(...sizes), // In square meters
+            max: Math.max(...sizes)  // In square meters
+          }
         };
       }
     );
   }
 };
 
-// Export the submitProperty function for direct import
+// Remove everything from line 890 to the end of the file (line 966)
+// The duplicate content includes:
+// - Comments about size conversions
+// - An orphaned property object for 'Cozy Bungalow'
+// This content should be completely deleted
+
+// The file should end after line 888 with:
+export default propertiesApi;
 export const submitProperty = propertiesApi.submitProperty;

@@ -15,31 +15,52 @@ const generateToken = (id) => {
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { name, email, password, role, phone, licenseNumber, brokerage, yearsOfExperience, specialization } = req.body;
+    const { firstName, lastName, email, password, role, phone, brokerage, yearsOfExperience, specialization } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json(
+        errorResponse('First name, last name, email, and password are required', 400)
+      );
+    }
+
+    // Validate password length
+    if (password.length < 8) {
+      return res.status(400).json(
+        errorResponse('Password must be at least 8 characters long', 400)
+      );
+    }
 
     // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json(
-        errorResponse('User already exists', 400)
+      return res.status(409).json(
+        errorResponse('User already exists with this email', 409)
       );
     }
 
+    // Combine firstName and lastName into name
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    
+    // Determine role - if brokerage is provided, assume agent role
+    const userRole = role || (brokerage ? 'agent' : 'buyer');
+
     // Prepare user data
     const userData = {
-      name,
-      email,
+      name: fullName,
+      email: email.toLowerCase().trim(),
       password,
-      role: role || 'buyer'
+      role: userRole
     };
 
     // Add agent-specific fields if role is agent
-    if (role === 'agent') {
-      userData.phone = phone;
-      userData.licenseNumber = licenseNumber;
-      userData.brokerage = brokerage;
-      userData.yearsOfExperience = yearsOfExperience;
-      userData.specialization = specialization;
+    if (userRole === 'agent') {
+      userData.agentProfile = {
+        phone: phone || '',
+        brokerage: brokerage || '',
+        yearsOfExperience: yearsOfExperience || 0,
+        specializations: specialization ? [specialization] : []
+      };
     }
 
     // Create user
@@ -50,7 +71,12 @@ const register = async (req, res) => {
     res.status(201).json(
       successResponse(
         {
-          user,
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          },
           token
         },
         'User registered successfully'
@@ -58,6 +84,22 @@ const register = async (req, res) => {
     );
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json(
+        errorResponse(`Validation failed: ${validationErrors.join(', ')}`, 400)
+      );
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(409).json(
+        errorResponse('User already exists with this email', 409)
+      );
+    }
+    
     res.status(500).json(
       errorResponse('Server error during registration', 500)
     );

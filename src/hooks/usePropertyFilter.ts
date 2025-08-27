@@ -6,14 +6,14 @@ interface Property {
   price: number;
   bedrooms: number;
   bathrooms: number;
-  squareFeet: number;
+  squareMeters: number; // Changed from squareFeet
   location: string;
   status: string;
 }
 
 interface FilterState {
   priceRange: [number, number];
-  sizeRange: [number, number];
+  sizeRange: [number, number]; // Now in square meters
   location: string;
   bedrooms: number;
   bathrooms: number;
@@ -47,7 +47,7 @@ export function usePropertyFilter({
       }
 
       // Size filter
-      if (property.squareFeet < filters.sizeRange[0] || property.squareFeet > filters.sizeRange[1]) {
+      if (property.squareMeters < filters.sizeRange[0] || property.squareMeters > filters.sizeRange[1]) {
         return false;
       }
 
@@ -105,7 +105,7 @@ export function usePropertyFilter({
     const filteredCount = filteredProperties.length;
     const activeFilters = Object.entries(filters).filter(([key, value]) => {
       if (key === 'priceRange') return value[0] > 0 || value[1] < 1000000;
-      if (key === 'sizeRange') return value[0] > 0 || value[1] < 5000;
+      if (key === 'sizeRange') return value[0] > 0 || value[1] < 465; // Updated max
       if (key === 'location') return value !== '';
       if (key === 'bedrooms' || key === 'bathrooms') return value > 0;
       if (key === 'status') return value !== '';
@@ -127,4 +127,4 @@ export function usePropertyFilter({
     resetFilters,
     getFilterStats,
   };
-} 
+}

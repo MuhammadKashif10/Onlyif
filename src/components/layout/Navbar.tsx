@@ -19,8 +19,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({
-  logo = '/logo.png',
-  logoText = 'OnlyIf',
+  logo = '/logo.svg',
+  logoText = '',
   navigationItems = [
     { label: 'Buy', href: '/browse' },
     { label: 'Sell', href: '/sell' },
@@ -32,13 +32,10 @@ export default function Navbar({
   className = ''
 }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSignInDropdownOpen, setIsSignInDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout } = useAuth();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const signInDropdownRef = useRef<HTMLDivElement>(null);
-  const signInButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,15 +46,8 @@ export default function Navbar({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const signInOptions = [
-    { label: 'Sign In as Buyer', href: '/signin?type=buyer' },
-    { label: 'Sign In as Seller', href: '/signin?type=seller' },
-    { label: 'Sign In as Agent', href: '/signin?type=agent' },
-  ];
-
   const handleMenuClose = () => {
     setIsMenuOpen(false);
-    setIsSignInDropdownOpen(false);
   };
 
   const handleClickOutside = (event: MouseEvent) => {
@@ -69,15 +59,6 @@ export default function Navbar({
     ) {
       setIsMenuOpen(false);
     }
-
-    if (
-      signInDropdownRef.current &&
-      !signInDropdownRef.current.contains(event.target as Node) &&
-      signInButtonRef.current &&
-      !signInButtonRef.current.contains(event.target as Node)
-    ) {
-      setIsSignInDropdownOpen(false);
-    }
   };
 
   useEffect(() => {
@@ -86,17 +67,17 @@ export default function Navbar({
   }, []);
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-white/95 backdrop-blur-sm shadow-md' : 'bg-white shadow-sm'
-    } ${className}`}>
-      <div className="container mx-auto px-4">
+    <header className={`sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''} ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-1.5 group">
-            <div className="w-5 h-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <span className="text-white font-bold text-xs">{logoText.charAt(0)}</span>
-            </div>
-            <span className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+          <Link href="/" className="flex items-center space-x-2 group">
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="h-32 w-32 transition-transform duration-200 group-hover:scale-105" 
+            />
+            <span className="text-xl font-bold text-gray-900 transition-colors duration-200 group-hover:text-blue-600">
               {logoText}
             </span>
           </Link>
@@ -129,30 +110,12 @@ export default function Navbar({
             )}
 
             {!user ? (
-              <div className="relative" ref={signInDropdownRef}>
-                <button
-                  ref={signInButtonRef}
-                  onClick={() => setIsSignInDropdownOpen(!isSignInDropdownOpen)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  {ctaText}
-                </button>
-                
-                {isSignInDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                    {signInOptions.map((option) => (
-                      <Link
-                        key={option.label}
-                        href={option.href}
-                        className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200"
-                        onClick={() => setIsSignInDropdownOpen(false)}
-                      >
-                        {option.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Link
+                href={ctaHref}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {ctaText}
+              </Link>
             ) : (
               <div className="flex items-center space-x-3">
                 <span className="text-gray-700">Welcome, {user.name || 'User'}</span>
@@ -199,40 +162,31 @@ export default function Navbar({
               </Link>
             ))}
             
-            {/* Mobile Sign In Options */}
+            {/* Mobile Sign In */}
             {!user && (
               <div className="pt-4 border-t border-gray-200">
-                <div className="space-y-1">
-                  {signInOptions.map((option) => (
-                    <Link
-                      key={option.label}
-                      href={option.href}
-                      className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
-                      onClick={handleMenuClose}
-                    >
-                      {option.label}
-                    </Link>
-                  ))}
-                </div>
+                <Link
+                  href={ctaHref}
+                  className="block w-full text-left px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded font-medium"
+                  onClick={handleMenuClose}
+                >
+                  {ctaText}
+                </Link>
               </div>
             )}
             
             {/* Mobile User Menu */}
             {user && (
               <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center px-3 py-2">
-                  <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium mr-3">
-                    {user.name?.charAt(0) || 'U'}
-                  </span>
-                  <span className="text-gray-700 font-medium">{user.name || 'User'}</span>
+                <div className="px-3 py-2 text-gray-700">
+                  Welcome, {user.name || 'User'}
                 </div>
                 <button
                   onClick={() => {
                     logout();
                     handleMenuClose();
                   }}
-                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-red-600 hover:bg-red-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
-                  aria-label="Sign out"
+                  className="block w-full text-left px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded font-medium"
                 >
                   Sign Out
                 </button>

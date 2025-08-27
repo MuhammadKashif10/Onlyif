@@ -4,6 +4,7 @@ import { adminApi } from '@/api/admin';
 import { PaymentRecord } from '@/types/api';
 import { Button, Loader, Alert, SearchBar, Pagination, DatePicker } from '@/components/reusable';
 import { PAYMENT_STATUS, PAYMENT_TYPES } from '@/utils/constants';
+import { formatCurrency } from '@/utils/currency';
 
 interface PaymentManagementProps {
   userRole?: string;
@@ -154,7 +155,7 @@ export default function PaymentManagement({ userRole }: PaymentManagementProps) 
                       <div className="text-sm text-gray-500">{payment.userEmail}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ${payment.amount.toFixed(2)}
+                      {formatCurrency(payment.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getTypeBadge(payment.type)}

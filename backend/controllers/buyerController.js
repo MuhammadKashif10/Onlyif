@@ -39,67 +39,58 @@ const unlockProperty = async (req, res) => {
     );
   }
 
-  const unlockAmount = 4900; // $49.00 in cents
-
-  try {
-    // Create Stripe PaymentIntent for property unlock
-    const paymentIntent = await stripeService.createPaymentIntent(
-      unlockAmount,
-      'usd',
-      {
-        propertyId: propertyId,
-        userId: req.user.id,
-        userName: req.user.name,
-        service: 'property_unlock'
-      }
-    );
-
-    // Create transaction record
-    const transaction = await Transaction.create({
-      user: req.user.id,
-      property: propertyId,
-      items: [{
-        addonType: 'property_unlock',
-        unitPrice: unlockAmount,
-        qty: 1
-      }],
-      amount: unlockAmount,
-      stripePaymentIntentId: paymentIntent.id,
-      status: paymentIntent.status
-    });
-
-    // If payment succeeded (for demo purposes, we'll mark as succeeded)
-    if (paymentIntent.status === 'succeeded' || process.env.NODE_ENV === 'development') {
-      // Update transaction status
-      transaction.status = 'succeeded';
-      await transaction.save();
-
-      // Update user's unlocked properties (if you have such a field)
-      await User.findByIdAndUpdate(req.user.id, {
-        $addToSet: { unlockedProperties: propertyId }
-      });
+  const unlockAmount = 4900; // A$49.00 in cents
+  // Create Stripe PaymentIntent for property unlock
+  const paymentIntent = await stripeService.createPaymentIntent(
+    unlockAmount,
+    'aud', // Changed from 'usd' to 'aud'
+    {
+      userId: req.user.id,
+      propertyId,
+      type: 'property_unlock'
     }
+  );
 
-    res.json(
-      successResponse({
-        success: true,
-        data: {
-          transactionId: transaction._id,
-          paymentIntentId: paymentIntent.id,
-          clientSecret: paymentIntent.client_secret,
-          amount: unlockAmount,
-          status: transaction.status,
-          propertyId: propertyId,
-          userName: req.user.name
-        }
-      }, 'Property unlock payment processed successfully')
-    );
-  } catch (error) {
-    console.error('Property unlock payment error:', error);
-    res.status(500).json(
-      errorResponse('Payment processing failed', 500)
-    );
+  // Create transaction record
+  const transaction = await Transaction.create({
+    user: req.user.id,
+    property: propertyId,
+    items: [{
+      addonType: 'property_unlock',
+      unitPrice: unlockAmount,
+      qty: 1
+    }],
+    amount: unlockAmount,
+    stripePaymentIntentId: paymentIntent.id,
+    status: paymentIntent.status
+  });
+
+  // If payment succeeded (for demo purposes, we'll mark as succeeded)
+  if (paymentIntent.status === 'succeeded' || process.env.NODE_ENV === 'development') {
+    // Update transaction status
+    transaction.status = 'succeeded';
+    await transaction.save();
+  
+    // Update user's unlocked properties (if you have such a field)
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { unlockedProperties: propertyId }
+    });
   }
+
+  res.json(
+    successResponse({
+      success: true,
+      data: {
+        transactionId: transaction._id,
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret,
+        amount: unlockAmount,
+        status: transaction.status,
+        propertyId: propertyId,
+        userName: req.user.name
+      }
+    }, 'Property unlock payment processed successfully')
+  );
 };
 
 // @desc    Get buyer's unlocked properties

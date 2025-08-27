@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { getSafeImageUrl } from '@/utils/imageUtils';
 import { StatusBadge } from '@/components/reusable';
+import { formatCurrencyCompact } from '@/utils/currency';
 
 type PropertyStatus = 'pending' | 'private' | 'public' | 'sold' | 'withdrawn';
 
@@ -15,7 +16,7 @@ interface PropertyCardProps {
   price: number;
   beds: number;
   baths: number;
-  size: number;
+  size: number; // This will now be in square meters
   image: string;
   status?: PropertyStatus;
   featured?: boolean;
@@ -37,30 +38,20 @@ export default function PropertyCard({
   className = '',
   onClick
 }: PropertyCardProps) {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
+  // Format size function
   const formatSize = (size: number) => {
-    return `${size.toLocaleString()} sq ft`;
+    return `${size.toLocaleString()} m²`;
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  // Handle click function
+  const handleClick = () => {
     if (onClick) {
-      e.preventDefault();
-      e.stopPropagation();
       onClick();
     }
   };
 
   const CardContent = (
     <>
-      {/* Image Container */}
       <div className="relative h-48 bg-gray-200 overflow-hidden">
         <img
           src={getSafeImageUrl(image, 'property')}
@@ -90,8 +81,8 @@ export default function PropertyCard({
 
         {/* Price Badge */}
         <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold bg-white text-gray-900 shadow-sm" aria-label={`Price: ${formatPrice(price)}`}>
-            {formatPrice(price)}
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold bg-white text-gray-900 shadow-sm" aria-label={`Price: ${formatCurrencyCompact(price)}`}>
+            {formatCurrencyCompact(price)}
           </span>
         </div>
 
@@ -153,7 +144,7 @@ export default function PropertyCard({
         <button 
           onClick={handleClick} 
           className="text-left w-full focus:outline-none"
-          aria-label={`Select ${title} at ${address} - ${formatPrice(price)}`}
+          aria-label={`Select ${title} at ${address} - ${formatCurrencyCompact(price)}`}
         >
           {CardContent}
         </button>
@@ -166,7 +157,7 @@ export default function PropertyCard({
       <Link
         href={`/property/${id}`}
         className="block focus:outline-none"
-        aria-label={`View details for ${title} at ${address} - ${formatPrice(price)}`}
+        aria-label={`View details for ${title} at ${address} - ${formatCurrencyCompact(price)}`}
       >
         {CardContent}
       </Link>

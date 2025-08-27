@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
     minlength: [2, 'Name must be at least 2 characters'],
     maxlength: [50, 'Name cannot exceed 50 characters']
   },
+  
   email: {
     type: String,
     required: [true, 'Email is required'],
@@ -17,140 +18,275 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email']
   },
+  
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters'],
-    select: false // Don't include password in queries by default
+    select: false
   },
+  
   role: {
     type: String,
     enum: ['seller', 'buyer', 'agent', 'admin'],
     default: 'buyer'
   },
-  // Agent-specific fields
-  phone: {
-    type: String,
-    required: function() { return this.role === 'agent'; },
-    trim: true
+  
+  // Enhanced agent fields
+  agentProfile: {
+    phone: {
+      type: String,
+      required: function() { return this.role === 'agent'; },
+      trim: true,
+      match: [/^\+?[1-9]\d{1,14}$/, 'Please provide a valid phone number']
+    },
+    // REMOVED: licenseNumber field
+    brokerage: {
+      type: String,
+      required: function() { return this.role === 'agent'; },
+      trim: true
+    },
+    yearsOfExperience: {
+      type: Number,
+      required: function() { return this.role === 'agent'; },
+      min: [0, 'Years of experience cannot be negative'],
+      max: [50, 'Years of experience cannot exceed 50']
+    },
+    specializations: [{
+      type: String,
+      enum: ['residential', 'commercial', 'luxury', 'first-time-buyers', 'investment', 'relocation']
+    }],
+    serviceAreas: [{
+      city: String,
+      state: String,
+      zipCodes: [String]
+    }],
+    commissionStructure: {
+      defaultRate: {
+        type: Number,
+        min: 0,
+        max: 10,
+        default: 3
+      },
+      negotiable: {
+        type: Boolean,
+        default: true
+      }
+    },
+    bio: {
+      type: String,
+      maxlength: [1000, 'Bio cannot exceed 1000 characters']
+    },
+    certifications: [String],
+    languages: [String]
   },
-  licenseNumber: {
-    type: String,
-    required: function() { return this.role === 'agent'; },
-    trim: true
-  },
-  brokerage: {
-    type: String,
-    required: function() { return this.role === 'agent'; },
-    trim: true
-  },
-  yearsOfExperience: {
-    type: Number,
-    required: function() { return this.role === 'agent'; },
-    min: [0, 'Years of experience cannot be negative']
-  },
-  specialization: {
-    type: String,
-    required: function() { return this.role === 'agent'; },
-    trim: true
-  },
+  
   avatar: {
     type: String,
     default: null
   },
+  
+  // Account status
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  
   isSuspended: {
     type: Boolean,
     default: false
   },
+  
+  suspendedAt: {
+    type: Date,
+    default: null
+  },
+  
+  suspendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  suspensionReason: {
+    type: String,
+    default: null
+  },
+  
+  // Soft delete implementation - CRITICAL FIX
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
   // Security fields
   loginAttempts: {
     type: Number,
     default: 0
   },
+  
   lockUntil: {
     type: Date
   },
+  
   lastLogin: {
     type: Date
   },
+  
   // Terms & Conditions
   termsAccepted: {
     type: Boolean,
     default: false
   },
+  
   termsAcceptedAt: {
     type: Date,
     default: null
   },
+  
   termsVersion: {
     type: String,
     default: null
   },
+  
+  // Verification
   otp: {
     type: String,
-    select: false // Don't include in queries by default
+    select: false
   },
+  
   otpExpiry: {
     type: Date,
     select: false
   },
+  
   isVerified: {
     type: Boolean,
     default: false
   },
+  
+  // Preferences
+  preferences: {
+    emailNotifications: {
+      type: Boolean,
+      default: true
+    },
+    smsNotifications: {
+      type: Boolean,
+      default: false
+    },
+    marketingEmails: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
   isSeeded: {
     type: Boolean,
-    default: false // Only true for admin accounts created via seeding
+    default: false
   }
 }, {
   timestamps: true
 });
 
-// Virtual for checking if account is locked
+// Advanced indexing strategy
+userSchema.index({ email: 1, isDeleted: 1 });
+userSchema.index({ role: 1, isDeleted: 1, isActive: 1 });
+// REMOVED: userSchema.index({ 'agentProfile.licenseNumber': 1 }, { sparse: true });
+userSchema.index({ 'agentProfile.serviceAreas.city': 1, 'agentProfile.serviceAreas.state': 1 }, { sparse: true });
+userSchema.index({ isSuspended: 1, isDeleted: 1 });
+userSchema.index({ createdAt: -1 });
+
+// Text search for agents
+userSchema.index({
+  name: 'text',
+  'agentProfile.bio': 'text',
+  'agentProfile.brokerage': 'text'
+});
+
+// Virtual for account lock status
 userSchema.virtual('isLocked').get(function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-// Hash password before saving
+// Pre-save middleware
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
-  // Hash password with cost of 12
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
+  try {
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Compare password method
+// Methods
 userSchema.methods.matchPassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Increment login attempts
 userSchema.methods.incLoginAttempts = function() {
-  // If we have a previous lock that has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
-      $unset: { lockUntil: 1 },
-      $set: { loginAttempts: 1 }
+      $unset: { loginAttempts: 1, lockUntil: 1 }
     });
   }
   
   const updates = { $inc: { loginAttempts: 1 } };
   
-  // Lock account after 5 failed attempts for 2 hours
   if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
-    updates.$set = { lockUntil: Date.now() + 2 * 60 * 60 * 1000 }; // 2 hours
+    updates.$set = {
+      lockUntil: Date.now() + 2 * 60 * 60 * 1000 // 2 hours
+    };
   }
   
   return this.updateOne(updates);
 };
 
-// Reset login attempts
 userSchema.methods.resetLoginAttempts = function() {
   return this.updateOne({
-    $unset: { loginAttempts: 1, lockUntil: 1 },
-    $set: { lastLogin: new Date() }
+    $unset: { loginAttempts: 1, lockUntil: 1 }
   });
+};
+
+// Soft delete methods
+userSchema.methods.softDelete = function(deletedBy) {
+  this.isDeleted = true;
+  this.deletedAt = new Date();
+  this.deletedBy = deletedBy;
+  this.isActive = false;
+  return this.save();
+};
+
+userSchema.methods.restore = function() {
+  this.isDeleted = false;
+  this.deletedAt = null;
+  this.deletedBy = null;
+  this.isActive = true;
+  return this.save();
+};
+
+// Query helpers
+userSchema.query.active = function() {
+  return this.where({ isDeleted: false, isActive: true });
+};
+
+userSchema.query.agents = function() {
+  return this.where({ role: 'agent', isDeleted: false, isActive: true });
 };
 
 module.exports = mongoose.model('User', userSchema);

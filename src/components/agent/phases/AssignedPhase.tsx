@@ -28,53 +28,24 @@ export default function AssignedPhase() {
     const fetchAssignments = async () => {
       setLoading(true);
       try {
-        // Mock data - in real app, this would come from API
-        const mockAssignments: PropertyAssignment[] = [
-          {
-            id: '1',
-            title: 'Beautiful Family Home',
-            address: '123 Maple Street, Austin, TX 78701',
-            price: 750000,
-            status: 'Active',
-            image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-            assignedDate: '2024-03-15',
-            priority: 'high',
-            beds: 4,
-            baths: 3,
-            size: 2500
-          },
-          {
-            id: '2',
-            title: 'Modern Downtown Condo',
-            address: '456 Main Street, Austin, TX 78702',
-            price: 650000,
-            status: 'Pending',
-            image: 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80',
-            assignedDate: '2024-03-18',
-            priority: 'medium',
-            beds: 3,
-            baths: 2,
-            size: 1800
-          },
-          {
-            id: '3',
-            title: 'Luxury Estate',
-            address: '789 Oak Avenue, Austin, TX 78703',
-            price: 1200000,
-            status: 'Active',
-            image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-            assignedDate: '2024-03-20',
-            priority: 'high',
-            beds: 5,
-            baths: 4,
-            size: 4200
+        // Use real API call to fetch agent assignments
+        const response = await fetch('/api/assignments', {
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
           }
-        ];
+        });
         
-        setAssignments(mockAssignments);
-        updateAgentData({ assignedProperties: mockAssignments });
+        if (!response.ok) throw new Error('Failed to fetch assignments');
+        
+        const data = await response.json();
+        const assignments = data.data || data;
+        
+        setAssignments(assignments);
+        updateAgentData({ assignedProperties: assignments });
       } catch (error) {
         console.error('Error fetching assignments:', error);
+        setAssignments([]);
       } finally {
         setLoading(false);
       }

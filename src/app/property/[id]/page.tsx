@@ -11,6 +11,7 @@ import {
 import { propertiesApi } from '@/api';
 import { notFound } from 'next/navigation';
 import { getSafeImageArray } from '@/utils/imageUtils';
+import { formatCurrencyCompact } from '@/utils/currency';
 
 interface PropertyPageProps {
   params: { id: string };
@@ -111,17 +112,18 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       : property.mainImage || '';
     
     // Utility functions
-    const formatPrice = (price: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(price);
-    };
+    // Remove the old formatPrice function
+    // const formatPrice = (price: number) => {
+    //   return new Intl.NumberFormat('en-US', {
+    //     style: 'currency',
+    //     currency: 'USD',
+    //     minimumFractionDigits: 0,
+    //     maximumFractionDigits: 0,
+    //   }).format(price);
+    // };
     
     const formatSize = (size: number) => {
-      return `${size.toLocaleString()} sq ft`;
+      return `${size.toLocaleString()} sq m`; // Changed from sq ft
     };
     
     const formatDate = (dateString: string) => {
@@ -161,7 +163,7 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       "floorSize": {
         "@type": "QuantitativeValue",
         "value": property.size,
-        "unitText": "square feet"
+        "unitText": "square meters" // Changed from square feet
       },
       "numberOfRooms": property.beds,
       "numberOfBathroomsTotal": property.baths,
@@ -187,9 +189,9 @@ export default async function PropertyPage({ params }: { params: { id: string } 
     
         <div className="min-h-screen bg-white">
           {/* Navigation */}
-          <Navbar
-            logo="/logo.png"
-            logoText="OnlyIf"
+          <Navbar 
+            logo="/logo.svg"
+            logoText=""
             navigationItems={[
               { label: 'Buy', href: '/browse', isActive: false },
               { label: 'Sell', href: '/sell', isActive: false },
@@ -229,3 +231,7 @@ export default async function PropertyPage({ params }: { params: { id: string } 
     notFound();
   }
 }
+
+<div className="text-3xl font-bold text-blue-600 mb-4">
+  {formatCurrencyCompact(property.price)}
+</div>

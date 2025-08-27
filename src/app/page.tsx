@@ -98,14 +98,17 @@ export default function HomePage() {
     console.log('Secondary CTA clicked');
   };
 
-  const handlePropertyClick = (propertyId: string) => {
-    console.log('Property clicked:', propertyId);
-    router.push(`/property/${propertyId}`);
+  const handlePropertyClick = (property: any) => {
+    console.log('Property clicked:', property.id);
+    router.push(`/property/${property.id}`);
   };
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
+      <Navbar 
+        logo="/logo.svg"
+        logoText=""
+      />
       
       {/* Hero Section */}
       <HeroSection
@@ -130,10 +133,12 @@ export default function HomePage() {
               Discover your next home from our curated selection of premium properties.
             </p>
           </div>
+          {/* Fix: Remove properties prop, let PropertyGrid use PropertyContext */}
           <PropertyGrid
-            properties={sampleProperties}
-            loading={loading}
-            totalProperties={sampleProperties.length}
+            featuredOnly={true}
+            showFilters={false}
+            showPagination={false}
+            itemsPerPage={6}
             onPropertyClick={handlePropertyClick}
           />
         </div>
