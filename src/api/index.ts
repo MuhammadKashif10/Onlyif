@@ -5,6 +5,7 @@ export { agentsApi } from './agents';
 export { contactApi } from './contact';
 export { offersApi } from './offers';
 export { adminApi } from './admin';
+export { sellerApi } from './seller';
 
 // Re-export types for convenience
 export type {
@@ -38,3 +39,4 @@ export * from './agents';
 export * from './contact';
 export * from './testimonials';
 export * from './admin';
+export * from './seller';

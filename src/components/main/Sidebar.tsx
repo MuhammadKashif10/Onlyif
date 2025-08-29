@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -15,28 +15,47 @@ import {
   BarChart3,
   Users,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 
 interface SidebarProps {
   userType: 'buyer' | 'seller' | 'agent';
   className?: string;
+  userId?: string; // Add userId prop for API calls
 }
 
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: string;
+}
+
+interface MenuResponse {
+  menu: MenuItem[];
+}
+
+// Icon mapping for dynamic icons
+const iconMap = {
+  Home,
+  Search,
+  Heart,
+  MessageSquare,
+  Settings,
+  User,
+  Building,
+  FileText,
+  BarChart3,
+  Users
+};
+
+// Static fallback menus (only used if API fails)
 const buyerLinks = [
   { href: '/dashboards/buyer', label: 'Dashboard', icon: Home },
   { href: '/browse', label: 'Browse Properties', icon: Search },
   { href: '/dashboards/buyer/saved', label: 'Saved Properties', icon: Heart },
   { href: '/dashboards/buyer/messages', label: 'Messages', icon: MessageSquare },
   { href: '/dashboards/buyer/account', label: 'Account Settings', icon: Settings },
-];
-
-const sellerLinks = [
-  { href: '/dashboards/seller', label: 'Dashboard', icon: Home },
-  { href: '/dashboards/seller/listings', label: 'My Listings', icon: Building },
-  { href: '/dashboards/seller/offers', label: 'Offers', icon: FileText },
-  { href: '/dashboards/seller/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dashboards/seller/account', label: 'Account Settings', icon: Settings },
 ];
 
 const agentLinks = [
@@ -48,16 +67,62 @@ const agentLinks = [
   { href: '/dashboards/agent/account', label: 'Account Settings', icon: Settings },
 ];
 
-export default function Sidebar({ userType, className = '' }: SidebarProps) {
+export default function Sidebar({ userType, className = '', userId = '1' }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
 
+  // Fetch dynamic menu items for seller
+  useEffect(() => {
+    if (userType === 'seller') {
+      fetchSellerMenu();
+    } else {
+      // Use static menus for buyer and agent
+      setMenuItems(userType === 'buyer' ? buyerLinks : agentLinks);
+    }
+  }, [userType, userId]);
+
+  const fetchSellerMenu = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/seller/${userId}/menu`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch menu configuration');
+      }
+      
+      const data: MenuResponse = await response.json();
+      
+      // Transform API response to component format
+      const transformedItems = data.menu.map(item => ({
+        href: item.path,
+        label: item.label,
+        icon: iconMap[item.icon as keyof typeof iconMap] || Home
+      }));
+      
+      setMenuItems(transformedItems);
+    } catch (err) {
+      console.error('Error fetching seller menu:', err);
+      setError('Unable to load dashboard menu.');
+      // Don't set fallback menu - strictly follow the requirement
+      setMenuItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getLinks = () => {
+    if (userType === 'seller') {
+      return menuItems;
+    }
+    
     switch (userType) {
       case 'buyer':
         return buyerLinks;
-      case 'seller':
-        return sellerLinks;
       case 'agent':
         return agentLinks;
       default:
@@ -68,60 +133,75 @@ export default function Sidebar({ userType, className = '' }: SidebarProps) {
   const links = getLinks();
 
   return (
-    <aside className={`bg-white shadow-lg transition-all duration-300 ${
+    <aside className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 transition-all duration-300 z-40 ${
       isCollapsed ? 'w-16' : 'w-64'
     } ${className}`}>
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <h2 className="text-lg font-semibold text-gray-800 capitalize">
-              {userType} Dashboard
-            </h2>
-          )}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-5 h-5 text-gray-600" />
-            ) : (
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute -right-3 top-6 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors"
+        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="w-3 h-3 text-gray-600" />
+        ) : (
+          <ChevronLeft className="w-3 h-3 text-gray-600" />
+        )}
+      </button>
 
-      {/* Navigation Links */}
-      <nav className="p-4">
-        <ul className="space-y-2">
-          {links.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            
-            return (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                  title={isCollapsed ? link.label : undefined}
-                >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${
-                    isActive ? 'text-blue-700' : 'text-gray-500'
-                  }`} />
-                  {!isCollapsed && (
-                    <span className="font-medium">{link.label}</span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      {/* Navigation */}
+      <nav className="h-full pt-16 pb-20 overflow-y-auto">
+        {/* Loading State */}
+        {isLoading && userType === 'seller' && (
+          <div className="flex items-center justify-center p-4">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            {!isCollapsed && (
+              <span className="ml-2 text-sm text-gray-600">Loading menu...</span>
+            )}
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && userType === 'seller' && (
+          <div className="p-4">
+            <div className={`text-red-600 text-sm ${
+              isCollapsed ? 'text-center' : ''
+            }`}>
+              {isCollapsed ? '!' : error}
+            </div>
+          </div>
+        )}
+
+        {/* Menu Items */}
+        {!isLoading && !error && (
+          <ul className="space-y-1 px-3">
+            {links.map((link, index) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href;
+              
+              return (
+                <li key={index}>
+                  <Link
+                    href={link.href}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title={isCollapsed ? link.label : undefined}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${
+                      isActive ? 'text-blue-700' : 'text-gray-500'
+                    }`} />
+                    {!isCollapsed && (
+                      <span className="font-medium">{link.label}</span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </nav>
 
       {/* User Profile Section */}

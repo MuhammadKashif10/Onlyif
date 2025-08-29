@@ -17,6 +17,15 @@ interface CoreLogicValuationResponse {
   buildingArea?: number;
 }
 
+// Add interface for price estimation request
+interface PriceEstimationRequest {
+  address: string;
+  propertyType: string;
+  bedrooms: number;
+  bathrooms: number;
+  landSize: number;
+}
+
 class CoreLogicAPI {
   private apiKey: string;
   private baseUrl: string;
@@ -69,7 +78,49 @@ class CoreLogicAPI {
       throw new Error('Unable to fetch property valuation. Please try again later.');
     }
   }
+
+  // Add the missing getPriceEstimation method
+  async getPriceEstimation(request: PriceEstimationRequest): Promise<CoreLogicValuationResponse> {
+    try {
+      // For demo purposes, simulate API call with mock data
+      await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
+      
+      // Calculate base price based on property characteristics
+      let basePrice = 300000;
+      
+      // Adjust price based on bedrooms
+      basePrice += request.bedrooms * 50000;
+      
+      // Adjust price based on bathrooms
+      basePrice += request.bathrooms * 25000;
+      
+      // Adjust price based on land size
+      basePrice += (request.landSize / 100) * 10000;
+      
+      // Add some randomness
+      basePrice += Math.floor(Math.random() * 100000);
+      
+      const variance = basePrice * 0.15;
+      
+      return {
+        estimatedValue: Math.floor(basePrice),
+        lowRange: Math.floor(basePrice - variance),
+        highRange: Math.floor(basePrice + variance),
+        confidence: Math.random() > 0.4 ? 'High' : Math.random() > 0.2 ? 'Medium' : 'Low',
+        lastUpdated: new Date().toLocaleDateString(),
+        propertyType: request.propertyType,
+        landSize: request.landSize,
+        buildingArea: request.bedrooms * 40 + request.bathrooms * 15 + 80 // Estimate building area
+      };
+      
+    } catch (error) {
+      console.error('CoreLogic Price Estimation Error:', error);
+      throw new Error('Unable to fetch price estimation. Please try again later.');
+    }
+  }
 }
 
-export const coreLogicAPI = new CoreLogicAPI();
-export type { CoreLogicValuationRequest, CoreLogicValuationResponse };
+// Export with the correct name that matches the import
+export const corelogicApi = new CoreLogicAPI();
+export const coreLogicAPI = new CoreLogicAPI(); // Keep backward compatibility
+export type { CoreLogicValuationRequest, CoreLogicValuationResponse, PriceEstimationRequest };

@@ -1,0 +1,518 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Plus, Home, DollarSign, Eye, TrendingUp, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { sellerApi, SellerStats } from '@/api/seller';
+import { propertiesApi } from '@/api';
+import { Property } from '@/types/api';
+
+export default function SellerDashboard() {
+  const [sellerStats, setSellerStats] = useState<SellerStats>({
+    totalOffers: 0,
+    pendingOffers: 0,
+    acceptedOffers: 0,
+    averageOfferValue: 0,
+    totalProperties: 0,
+    totalViews: 0,
+    averagePropertyValue: 0
+  });
+  const [activeListings, setActiveListings] = useState<Property[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    price: '',
+    beds: '',
+    baths: '',
+    size: '',
+    propertyType: 'Single Family',
+    description: ''
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // TODO: Get actual seller ID from authentication context
+      const sellerId = 'current-seller-id'; // Replace with actual seller ID
+      
+      // Fetch seller statistics
+      const stats = await sellerApi.getSellerOverview(sellerId);
+      setSellerStats(stats);
+      
+      // Fetch seller's active listings
+      const listingsResponse = await sellerApi.getSellerListings(sellerId, {
+        page: 1,
+        limit: 10,
+        status: 'public'
+      });
+      setActiveListings(listingsResponse.properties);
+      
+    } catch (err) {
+      console.error('Error loading seller data:', err);
+      setError('Failed to load dashboard data. Please try again.');
+      
+      // Fallback to mock data if API fails
+      setSellerStats({
+        totalOffers: 12,
+        pendingOffers: 3,
+        acceptedOffers: 2,
+        averageOfferValue: 425000,
+        totalProperties: 5,
+        totalViews: 1247,
+        averagePropertyValue: 520000
+      });
+      
+      setActiveListings([
+        {
+          id: '1',
+          title: 'Modern Downtown Condo',
+          address: '123 Main St, Austin, TX 78701',
+          city: 'Austin',
+          state: 'TX',
+          zipCode: '78701',
+          price: 450000,
+          beds: 2,
+          baths: 2,
+          size: 1200,
+          propertyType: 'Condo',
+          status: 'public',
+          dateListed: '2024-01-15',
+          daysOnMarket: 45,
+          mainImage: '/images/02.jpg',
+          images: ['/images/02.jpg'],
+          description: 'Beautiful modern condo in downtown Austin',
+          yearBuilt: 2018,
+          lotSize: 0.1,
+          featured: true,
+          features: ['Modern appliances', 'City views'],
+          coordinates: { lat: 30.2672, lng: -97.7431 },
+          agent: {
+            id: 'agent1',
+            name: 'Sarah Johnson',
+            title: 'Senior Agent',
+            phone: '(512) 555-0123',
+            email: 'sarah@onlyif.com',
+            avatar: '/images/agent1.jpg',
+            rating: 4.8,
+            reviews: 127,
+            experience: '8 years',
+            specializations: ['Condos'],
+            languages: ['English'],
+            bio: 'Experienced agent',
+            propertiesSold: 156,
+            averageDaysOnMarket: 28,
+            office: 'OnlyIf Downtown',
+            socialMedia: {}
+          },
+          similarProperties: [],
+          hasRequiredMedia: true,
+          isAdminApproved: true,
+          canChangeVisibility: true,
+          visibilityLastUpdated: '2024-01-15'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      // Create new property via API
+      const newProperty = await propertiesApi.submitProperty({
+        title: formData.title,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        price: parseFloat(formData.price),
+        beds: parseInt(formData.beds),
+        baths: parseFloat(formData.baths),
+        size: parseInt(formData.size),
+        propertyType: formData.propertyType,
+        description: formData.description,
+        status: 'pending' // Start as pending, can be changed to public later
+      });
+      
+      // Add to local state for immediate UI update
+      setActiveListings(prev => [newProperty, ...prev]);
+      
+      // Update statistics
+      await loadData();
+      
+      // Reset form and close modal
+      setFormData({
+        title: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        price: '',
+        beds: '',
+        baths: '',
+        size: '',
+        propertyType: 'Single Family',
+        description: ''
+      });
+      setShowAddModal(false);
+      
+    } catch (err) {
+      console.error('Error adding property:', err);
+      setError('Failed to add property. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // Loading state
+  if (loading && activeListings.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Seller Dashboard</h1>
+          <p className="text-gray-600 mt-2">Manage your property listings and track performance</p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <span className="sr-only">Dismiss</span>
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Home className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Properties</p>
+                <p className="text-2xl font-bold text-gray-900">{sellerStats.totalProperties}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <DollarSign className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Offers</p>
+                <p className="text-2xl font-bold text-gray-900">{sellerStats.totalOffers}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Eye className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Views</p>
+                <p className="text-2xl font-bold text-gray-900">{sellerStats.totalViews.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Avg. Offer Value</p>
+                <p className="text-2xl font-bold text-gray-900">${sellerStats.averageOfferValue.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Listings */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900">Active Listings</h2>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Listing
+            </button>
+          </div>
+
+          <div className="p-6">
+            {activeListings.length === 0 ? (
+              <div className="text-center py-12">
+                <Home className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No active listings found</h3>
+                <p className="text-gray-600 mb-4">Add your first property to get started!</p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Add Your First Property
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeListings.map((listing) => (
+                  <div key={listing.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="aspect-w-16 aspect-h-9">
+                      <img
+                        src={listing.mainImage || '/images/placeholder.jpg'}
+                        alt={listing.title}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-2">{listing.title}</h3>
+                      <p className="text-gray-600 text-sm mb-2">{listing.address}</p>
+                      <p className="text-2xl font-bold text-blue-600 mb-2">${listing.price.toLocaleString()}</p>
+                      <div className="flex justify-between text-sm text-gray-600 mb-3">
+                        <span>{listing.beds} beds</span>
+                        <span>{listing.baths} baths</span>
+                        <span>{listing.size} sqft</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          listing.status === 'public' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {listing.status === 'public' ? 'Live' : 'Pending'}
+                        </span>
+                        <div className="flex space-x-2">
+                          <button className="p-1 text-gray-400 hover:text-gray-600">
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-gray-600">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Listing Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Listing</h2>
+              
+              <form onSubmit={handleAddListing} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                    <select
+                      name="propertyType"
+                      value={formData.propertyType}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="Single Family">Single Family</option>
+                      <option value="Condo">Condo</option>
+                      <option value="Townhouse">Townhouse</option>
+                      <option value="Multi-Family">Multi-Family</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Zip Code</label>
+                    <input
+                      type="text"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+                    <input
+                      type="number"
+                      name="beds"
+                      value={formData.beds}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bathrooms</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      name="baths"
+                      value={formData.baths}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Square Feet</label>
+                    <input
+                      type="number"
+                      name="size"
+                      value={formData.size}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Describe your property..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Adding...' : 'Add Listing'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

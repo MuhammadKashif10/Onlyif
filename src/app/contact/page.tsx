@@ -235,4 +235,3 @@ export default function ContactPage() {
     </div>
   );
 }
-// Removed orphaned JSX code that was outside the component

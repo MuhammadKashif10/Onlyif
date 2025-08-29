@@ -72,7 +72,7 @@ const propertySchema = new mongoose.Schema({
   // Property details with enhanced validation
   propertyType: {
     type: String,
-    enum: ['single-family', 'condo', 'townhouse', 'multi-family', 'land', 'commercial'],
+    enum: ['single-family', 'condo', 'townhouse', 'multi-family', 'land', 'commercial', 'apartment'],
     required: [true, 'Property type is required']
   },
   
@@ -115,7 +115,28 @@ const propertySchema = new mongoose.Schema({
     trim: true,
     maxlength: [2000, 'Description cannot exceed 2000 characters']
   },
-  
+
+  // Add contact information fields
+  contactInfo: {
+    name: {
+      type: String,
+      required: [true, 'Contact name is required'],
+      trim: true
+    },
+    email: {
+      type: String,
+      required: [true, 'Contact email is required'],
+      trim: true,
+      lowercase: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email']
+    },
+    phone: {
+      type: String,
+      required: [true, 'Contact phone is required'],
+      trim: true
+    }
+  },
+
   images: [{
     url: {
       type: String,

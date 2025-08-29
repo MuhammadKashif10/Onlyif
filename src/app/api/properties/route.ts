@@ -233,7 +233,7 @@ export async function GET(request: NextRequest) {
     // Proxy to backend API
     try {
       const { searchParams } = new URL(request.url);
-      const backendUrl = `${process.env.NEXT_PUBLIC_API_URL}/properties?${searchParams.toString()}`;
+      const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/properties?${searchParams.toString()}`;
       
       const response = await fetch(backendUrl, {
         method: 'GET',
@@ -246,8 +246,8 @@ export async function GET(request: NextRequest) {
         throw new Error(`Backend API error: ${response.status}`);
       }
       
-      const data = await response.json();
-      return NextResponse.json(data);
+      const result = await response.json();
+      return NextResponse.json(result);
     } catch (error) {
       console.error('Error proxying to backend API:', error);
       return NextResponse.json(
@@ -259,106 +259,127 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (USE_MOCKS) {
-    try {
-      const contentType = request.headers.get('content-type') || '';
-      let propertyData: any;
-      let uploadedFiles: File[] = [];
-
-      // Handle both JSON and multipart form data
-      if (contentType.includes('multipart/form-data')) {
-        // Handle file uploads with form data
-        const formData = await request.formData();
-        
-        // Extract property data from form fields
-        propertyData = {
-          title: formData.get('title')?.toString() || '',
-          address: formData.get('address')?.toString() || '',
-          city: formData.get('city')?.toString() || '',
-          state: formData.get('state')?.toString() || '',
-          zipCode: formData.get('zipCode')?.toString() || '',
-          price: parseFloat(formData.get('price')?.toString() || '0'),
-          beds: parseInt(formData.get('beds')?.toString() || '0'),
-          baths: parseFloat(formData.get('baths')?.toString() || '0'),
-          size: parseFloat(formData.get('squareMeters')?.toString() || '0'), // Changed from size
-          propertyType: formData.get('propertyType')?.toString() || 'Single Family',
-          yearBuilt: formData.get('yearBuilt') ? parseInt(formData.get('yearBuilt')?.toString() || '0') : new Date().getFullYear(),
-          lotSize: formData.get('lotSize') ? parseFloat(formData.get('lotSize')?.toString() || '0') : 0.25,
-          description: formData.get('description')?.toString() || '',
-          features: formData.get('features') ? JSON.parse(formData.get('features')?.toString() || '[]') : [],
-          contactName: formData.get('contactName')?.toString() || '',
-          contactEmail: formData.get('contactEmail')?.toString() || '',
-          contactPhone: formData.get('contactPhone')?.toString() || '',
-          timeframe: formData.get('timeframe')?.toString() || ''
-        };
-
-        // Extract uploaded files
-        for (const [key, value] of formData.entries()) {
-          if (key.startsWith('images_') && value instanceof File) {
-            uploadedFiles.push(value);
-          }
+  try {
+    let propertyData: any;
+    
+    const contentType = request.headers.get('content-type');
+    
+    if (contentType?.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      
+      // Transform FormData to match backend Property model structure
+      propertyData = {
+        title: formData.get('title') as string,
+        address: {
+          street: formData.get('address') as string,
+          city: formData.get('city') as string,
+          state: formData.get('state') as string,
+          zipCode: formData.get('zipCode') as string,
+          country: 'US'
+        },
+        location: {
+          type: 'Point',
+          coordinates: [
+            parseFloat(formData.get('longitude') as string) || -97.7431, // Default to Austin, TX
+            parseFloat(formData.get('latitude') as string) || 30.2672
+          ]
+        },
+        propertyType: (formData.get('propertyType') as string)?.toLowerCase().replace(' ', '-') || 'single-family',
+        price: parseFloat(formData.get('price') as string),
+        beds: parseInt(formData.get('beds') as string),
+        baths: parseFloat(formData.get('baths') as string),
+        squareMeters: parseFloat(formData.get('squareMeters') as string),
+        yearBuilt: parseInt(formData.get('yearBuilt') as string) || undefined,
+        description: formData.get('description') as string || '',
+        // Add required contactInfo fields
+        contactInfo: {
+          name: formData.get('contactName') as string || 'Property Owner',
+          email: formData.get('contactEmail') as string || 'owner@example.com',
+          phone: formData.get('contactPhone') as string || '555-0123'
         }
-      } else {
-        // Handle JSON data
-        propertyData = await request.json();
-      }
-
-      // Validate required fields
-      if (!propertyData.title || !propertyData.price) {
-        return NextResponse.json(
-          { success: false, error: 'Title and price are required' },
-          { status: 400 }
-        );
-      }
-
-      // Simulate file processing
-      const processedImages = uploadedFiles.map((file, index) => 
-        `https://images.unsplash.com/photo-${Date.now()}-${index}?w=800&h=600&fit=crop`
-      );
-
-      // Create new property with generated ID
-      const newProperty = {
-        id: `property_${Date.now()}`,
-        ...propertyData,
-        images: processedImages.length > 0 ? processedImages : [
-          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop'
-        ],
-        mainImage: processedImages[0] || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop',
-        status: 'pending_review',
-        featured: false,
-        submittedAt: new Date().toISOString(),
-        dateListed: new Date().toISOString().split('T')[0],
-        daysOnMarket: 0,
-        hasRequiredMedia: processedImages.length > 0,
-        isAdminApproved: false,
-        canChangeVisibility: false,
-        visibilityLastUpdated: new Date().toISOString()
       };
+      
+      // Handle image files
+      const imageFiles = [];
+      let index = 0;
+      while (formData.get(`images_${index}`)) {
+        const file = formData.get(`images_${index}`) as File;
+        if (file && file.size > 0) {
+          imageFiles.push({
+            url: `https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop`, // Placeholder
+            caption: file.name,
+            isPrimary: index === 0,
+            order: index
+          });
+        }
+        index++;
+      }
+      propertyData.images = imageFiles;
+      
+    } else {
+      propertyData = await request.json();
+    }
 
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Return success response with proper format
+    if (USE_MOCKS) {
+      // Mock implementation - add to in-memory array
+      const newProperty = {
+        id: Date.now().toString(),
+        ...propertyData,
+        // Flatten address for mock compatibility
+        address: `${propertyData.address?.street}, ${propertyData.address?.city}, ${propertyData.address?.state} ${propertyData.address?.zipCode}`,
+        featured: false,
+        image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop',
+        images: [
+          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop'
+        ]
+      };
+      
+      mockProperties.push(newProperty);
+      
       return NextResponse.json({
         success: true,
-        data: {
-          id: newProperty.id,
-          ...newProperty
+        data: newProperty,
+        message: 'Property created successfully (mock)'
+      });
+    } else {
+      // Real API implementation
+      const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/properties`;
+      
+      // Get auth token from request headers
+      const authHeader = request.headers.get('authorization');
+      const token = authHeader?.replace('Bearer ', '') || '';
+      
+      const response = await fetch(backendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        message: 'Property submitted successfully and is pending review'
+        body: JSON.stringify(propertyData),
       });
 
-    } catch (error) {
-      console.error('Error processing property submission:', error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to process property submission' },
-        { status: 500 }
-      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
+      }
+
+      const result = await response.json();
+      
+      return NextResponse.json({
+        success: true,
+        data: result.data,
+        message: 'Property created successfully'
+      });
     }
-  } else {
+  } catch (error) {
+    console.error('Error creating property:', error);
     return NextResponse.json(
-      { success: false, error: 'Real API not implemented yet' },
-      { status: 501 }
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to create property',
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
     );
   }
 }

@@ -1,3 +1,23 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
+
+interface NavbarProps {
+  logo?: string;
+  logoText?: string;
+  navigationItems?: Array<{
+    label: string;
+    href: string;
+    isActive?: boolean;
+  }>;
+  ctaText?: string;
+  ctaHref?: string;
+  className?: string;
+}
+
 export default function Navbar({
   logo = '/logo.svg',
   logoText = '',

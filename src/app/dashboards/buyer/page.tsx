@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Navbar, Footer } from '@/components';
+import { Navbar } from '@/components';
 import { Card, Button } from '@/components/reusable';
 
 interface DashboardStats {
@@ -73,7 +73,6 @@ export default function BuyerDashboard() {
             <Button onClick={() => router.push('/signin?type=buyer')}>Sign In as Buyer</Button>
           </Card>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -251,7 +250,6 @@ export default function BuyerDashboard() {
         </Card>
       </main>
 
-      <Footer />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Navbar, Footer } from '@/components';
+import { Navbar } from '@/components';
 import { AgentProvider, useAgentContext } from '@/context/AgentContext';
+import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import Button from '@/components/reusable/Button';
 import InputField from '@/components/reusable/InputField';
@@ -47,8 +48,23 @@ interface Note {
   createdAt: string;
 }
 
+// Add Activity interface
+interface Activity {
+  id: string;
+  type: 'property_assigned' | 'inspection' | 'message';
+  title: string;
+  timestamp: string;
+}
+
+interface AgentStats {
+  assignedProperties: number;
+  pendingInspections: number;
+  newMessages: number;
+  completedInspections: number;
+}
 export default function AgentDashboard() {
-  const currentUserId = 'agent-456';
+  const { user } = useAuth();
+  const currentUserId = user?.id || 'agent-456';
   const currentUserRole = 'agent';
   
   // Add missing state variables
@@ -60,6 +76,11 @@ export default function AgentDashboard() {
   const [selectedProperty, setSelectedProperty] = useState<PropertyAssignment | null>(null);
   const [showInspectionForm, setShowInspectionForm] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
+  
+  // Add assignments loading and error states
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+  
   const [inspectionForm, setInspectionForm] = useState({
     date: '',
     time: '',
@@ -73,12 +94,175 @@ export default function AgentDashboard() {
     type: 'property' as 'property' | 'inspection' | 'general',
     priority: 'medium' as 'high' | 'medium' | 'low'
   });
-  const [stats, setStats] = useState({
-    assignedProperties: 12,
-    pendingInspections: 5,
-    clientMessages: 8,
-    completedInspections: 15
+  
+  // Updated stats state with loading and error handling
+  const [stats, setStats] = useState<AgentStats>({
+    assignedProperties: 0,
+    pendingInspections: 0,
+    newMessages: 0,
+    completedInspections: 0
   });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  // Add activities state
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  
+  // Add fetchAgentProperties function
+  const fetchAgentProperties = async () => {
+    try {
+      setAssignmentsLoading(true);
+      setAssignmentsError(null);
+      
+      const response = await fetch(`/api/agent/${currentUserId}/properties`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Handle 404 or other errors gracefully
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Treat 404 as empty properties, not an error
+          setAssignments([]);
+          return;
+        }
+        throw new Error('Failed to fetch assigned properties');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Handle empty array or undefined data gracefully
+        const properties = data.data || [];
+        setAssignments(properties);
+      } else {
+        // Don't show API errors to users, just log them
+        console.error('API returned error:', data.error);
+        setAssignments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching agent properties:', error);
+      // Don't show technical errors to users
+      setAssignmentsError(null);
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+  
+  // Add fetchAgentStats function
+  const fetchAgentStats = async () => {
+    try {
+      setStatsLoading(true);
+      setStatsError(null);
+      
+      const response = await fetch(`/api/agent/${currentUserId}/stats`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch agent stats');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setStats(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch stats');
+      }
+    } catch (error) {
+      console.error('Error fetching agent stats:', error);
+      setStatsError('Failed to load agent statistics');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  // Add fetchAgentActivities function
+  const fetchAgentActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      setActivitiesError(null);
+      
+      const response = await fetch(`/api/agent/${currentUserId}/activities`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+
+      const data = await response.json();
+      setActivities(data.activities || []);
+    } catch (error) {
+      console.error('Error fetching agent activities:', error);
+      setActivitiesError('Failed to load recent activities');
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  // Function to get activity icon color based on type
+  const getActivityIconColor = (type: string) => {
+    switch (type) {
+      case 'property_assigned':
+        return 'bg-green-500';
+      case 'inspection':
+        return 'bg-blue-500';
+      case 'message':
+        return 'bg-purple-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  // Function to format timestamp for display
+  const formatTimestamp = (timestamp: string) => {
+    const now = new Date();
+    const activityTime = new Date(timestamp);
+    const diffInHours = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60));
+      return `${diffInMinutes} minutes ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays} days ago`;
+    }
+  };
+
+  useEffect(() => {
+    fetchAgentStats();
+    fetchAgentActivities();
+    fetchAgentProperties(); // Add this line
+  }, [currentUserId]);
+
+  // Load stats on component mount
+  useEffect(() => {
+    if (currentUserId) {
+      fetchAgentStats();
+    }
+  }, [currentUserId]);
+
+  // Remove the mock data useEffect - replace with:
+  useEffect(() => {
+    if (currentUserId) {
+      fetchAgentProperties();
+    }
+  }, [currentUserId]);
 
   // Add useEffect to load mock data
   useEffect(() => {
@@ -128,28 +312,75 @@ export default function AgentDashboard() {
     }
   };
 
-  const handleAddInspection = () => {
+  const handleAddInspection = async () => {
     if (!inspectionForm.date || !inspectionForm.time || !inspectionForm.inspector || !inspectionForm.client) {
       alert('Please fill in all required fields');
       return;
     }
     
-    const newInspection: Inspection = {
-      id: Date.now().toString(),
-      propertyId: selectedProperty?.id || '',
-      propertyName: selectedProperty?.title || '',
-      date: inspectionForm.date,
-      time: inspectionForm.time,
-      status: 'scheduled',
-      inspector: inspectionForm.inspector,
-      client: inspectionForm.client,
-      notes: inspectionForm.notes,
-      address: selectedProperty?.address || ''
-    };
-    
-    setInspections([...inspections, newInspection]);
-    setShowInspectionForm(false);
-    setInspectionForm({ date: '', time: '', inspector: '', client: '', notes: '' });
+    if (!selectedProperty) {
+      alert('Please select a property first');
+      return;
+    }
+
+    try {
+      // Combine date and time into datetime
+      const datetime = new Date(`${inspectionForm.date}T${inspectionForm.time}`);
+      
+      const inspectionData = {
+        propertyId: selectedProperty.id,
+        datetime: datetime.toISOString(),
+        inspector: {
+          name: inspectionForm.inspector,
+          phone: '', // Add phone field to form if needed
+          email: '', // Add email field to form if needed
+        },
+        notes: inspectionForm.notes
+      };
+
+      const response = await fetch('/api/inspections', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(inspectionData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to schedule inspection');
+      }
+
+      const result = await response.json();
+      
+      // Add to local state for immediate UI update
+      const newInspection: Inspection = {
+        id: result.data._id,
+        propertyId: selectedProperty.id,
+        propertyName: selectedProperty.title,
+        date: inspectionForm.date,
+        time: inspectionForm.time,
+        status: 'scheduled',
+        inspector: inspectionForm.inspector,
+        client: inspectionForm.client,
+        notes: inspectionForm.notes,
+        address: selectedProperty.address
+      };
+      
+      setInspections([...inspections, newInspection]);
+      setShowInspectionForm(false);
+      setInspectionForm({ date: '', time: '', inspector: '', client: '', notes: '' });
+      
+      // Refresh stats and activities
+      fetchAgentStats();
+      fetchAgentActivities();
+      
+      alert('Inspection scheduled successfully!');
+    } catch (error) {
+      console.error('Error scheduling inspection:', error);
+      alert(`Failed to schedule inspection: ${error.message}`);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -260,50 +491,104 @@ export default function AgentDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{stats.assignedProperties}</div>
+                  {statsLoading ? (
+                    <div className="text-3xl font-bold text-gray-400">...</div>
+                  ) : (
+                    <div className="text-3xl font-bold text-green-600">{stats.assignedProperties}</div>
+                  )}
                   <div className="text-gray-600">Assigned Properties</div>
+                  {statsError && (
+                    <div className="text-xs text-red-500 mt-1">Failed to load</div>
+                  )}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{stats.pendingInspections}</div>
+                  {statsLoading ? (
+                    <div className="text-3xl font-bold text-gray-400">...</div>
+                  ) : (
+                    <div className="text-3xl font-bold text-blue-600">{stats.pendingInspections}</div>
+                  )}
                   <div className="text-gray-600">Pending Inspections</div>
+                  {statsError && (
+                    <div className="text-xs text-red-500 mt-1">Failed to load</div>
+                  )}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">{stats.clientMessages}</div>
+                  {statsLoading ? (
+                    <div className="text-3xl font-bold text-gray-400">...</div>
+                  ) : (
+                    <div className="text-3xl font-bold text-purple-600">{stats.newMessages}</div>
+                  )}
                   <div className="text-gray-600">New Messages</div>
+                  {statsError && (
+                    <div className="text-xs text-red-500 mt-1">Failed to load</div>
+                  )}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-600">{stats.completedInspections}</div>
+                  {statsLoading ? (
+                    <div className="text-3xl font-bold text-gray-400">...</div>
+                  ) : (
+                    <div className="text-3xl font-bold text-orange-600">{stats.completedInspections}</div>
+                  )}
                   <div className="text-gray-600">Completed Inspections</div>
+                  {statsError && (
+                    <div className="text-xs text-red-500 mt-1">Failed to load</div>
+                  )}
                 </div>
               </div>
             </div>
 
+            {/* Refresh Stats Button */}
+            {statsError && (
+              <div className="mb-6 text-center">
+                <Button
+                  onClick={fetchAgentStats}
+                  disabled={statsLoading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {statsLoading ? 'Loading...' : 'Retry Loading Stats'}
+                </Button>
+              </div>
+            )}
+
             {/* Recent Activity */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700">New property assigned: Beautiful Family Home</span>
-                  <span className="text-gray-500 text-sm">2 hours ago</span>
+              {activitiesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">Loading activities...</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-700">Inspection scheduled for Modern Downtown Condo</span>
-                  <span className="text-gray-500 text-sm">4 hours ago</span>
+              ) : activitiesError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-600 mb-2">{activitiesError}</p>
+                  <Button 
+                    onClick={fetchAgentActivities}
+                    className="text-sm px-4 py-2"
+                  >
+                    Retry
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span className="text-gray-700">New message from client Mike Johnson</span>
-                  <span className="text-gray-500 text-sm">6 hours ago</span>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No recent activities found
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${getActivityIconColor(activity.type)}`}></div>
+                      <span className="text-gray-700 flex-1">{activity.title}</span>
+                      <span className="text-gray-500 text-sm">{formatTimestamp(activity.timestamp)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -313,45 +598,98 @@ export default function AgentDashboard() {
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Assigned Properties</h2>
+              <Button
+                onClick={fetchAgentProperties}
+                variant="outline"
+                className="text-sm"
+                disabled={assignmentsLoading}
+              >
+                {assignmentsLoading ? 'Loading...' : 'Refresh'}
+              </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {assignments.map((property) => (
-                <div key={property.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative h-48">
-                    <Image
-                      src={property.image}
-                      alt={property.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium ${
-                      getPriorityColor(property.priority)
-                    }`}>
-                      {property.priority.toUpperCase()}
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
-                    <p className="text-gray-600 text-sm mb-2">{property.address}</p>
-                    <p className="text-green-600 font-bold text-xl mb-2">
-                      ${property.price.toLocaleString()}
-                    </p>
-                    <div className="flex justify-between text-sm text-gray-500 mb-3">
-                      <span>{property.beds} beds</span>
-                      <span>{property.baths} baths</span>
-                      <span>{property.size} sq ft</span>
-                    </div>
-                    <Button
-                      onClick={() => setSelectedProperty(property)}
-                      className="w-full"
-                      variant="primary"
-                    >
-                      View Details
-                    </Button>
-                  </div>
+            
+            {assignmentsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">Loading properties...</span>
+              </div>
+            ) : assignments.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
                 </div>
-              ))}
-            </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No properties available right now</h3>
+                <p className="text-gray-500 mb-4">Properties will automatically appear here when sellers assign them to you.</p>
+                <Button 
+                  onClick={fetchAgentProperties}
+                  variant="outline"
+                  disabled={assignmentsLoading}
+                >
+                  Check for Updates
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {assignments.map((assignment) => (
+                  <div key={assignment.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="relative h-48">
+                      <Image
+                        src={assignment.image}
+                        alt={assignment.title}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          getPriorityColor(assignment.priority)
+                        }`}>
+                          {assignment.priority}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg mb-2">{assignment.title}</h3>
+                      <p className="text-gray-600 text-sm mb-2">{assignment.address}</p>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-2xl font-bold text-green-600">
+                          ${assignment.price.toLocaleString()}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          assignment.status === 'active' ? 'bg-green-100 text-green-800' :
+                          assignment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {assignment.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-500 mb-3">
+                        <span>{assignment.beds} beds</span>
+                        <span>{assignment.baths} baths</span>
+                        <span>{assignment.size} sqft</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => handleSelectProperty(assignment)}
+                          variant="primary"
+                          className="flex-1 text-sm"
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          onClick={handleShowInspectionForm}
+                          variant="outline"
+                          className="flex-1 text-sm"
+                        >
+                          Schedule Inspection
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -576,9 +914,6 @@ export default function AgentDashboard() {
         )}
       </div>
 
-      <Footer />
     </div>
   );
 }
-
-// REMOVE all the functions that were defined outside the component (lines 541-599)

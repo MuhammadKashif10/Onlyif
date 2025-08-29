@@ -329,101 +329,115 @@ const getSellerProperties = async (req, res) => {
 // @access  Public
 const submitPropertyPublic = async (req, res) => {
   try {
-    // Clean and validate the incoming data
     const {
-      title,
-      address,
-      city,
-      state,
-      zipCode,
-      price,
-      beds,
-      baths,
-      size,
-      propertyType,
-      yearBuilt,
-      description,
-      features,
-      images,
-      contactName,
-      contactEmail,
-      contactPhone,
-      timeframe
+      title, address, city, state, zipCode, price, beds, baths, 
+      squareMeters, propertyType, yearBuilt, description, features,
+      contactName, contactEmail, contactPhone, images, timeframe,
+      latitude = 0, longitude = 0
     } = req.body;
 
-    // Validate required fields
-    const requiredFields = { title, address, city, state, zipCode, price, beds, baths, squareMeters };
+    // Validation for required fields
+    const requiredFields = {
+      title, address, city, state, zipCode, price, beds, baths,
+      squareMeters, propertyType, contactName, contactEmail, contactPhone
+    };
+
     const missingFields = Object.entries(requiredFields)
       .filter(([key, value]) => !value && value !== 0)
       .map(([key]) => key);
-    
+
     if (missingFields.length > 0) {
-      return res.status(400).json(
-        errorResponse(`Missing required fields: ${missingFields.join(', ')}`, 400)
-      );
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
     }
 
-    // Prepare clean property data with proper types
+    // Create or find user
+    let user = await User.findOne({ email: contactEmail });
+    if (!user) {
+      // Generate a temporary password for public submissions
+      const tempPassword = Math.random().toString(36).slice(-12) + 'Temp123!';
+      
+      user = new User({
+        name: contactName,
+        email: contactEmail,
+        phone: contactPhone,
+        password: tempPassword, // Add temporary password
+        role: 'seller',
+        isVerified: false
+      });
+      await user.save();
+    }
+
+    // Process images if provided
+    const processedImages = images && images.length > 0 
+      ? images.map((img, index) => ({
+          url: img.url || img.preview || '',
+          caption: img.caption || '',
+          isPrimary: index === 0,
+          order: index
+        }))
+      : [];
+
+    // Create property data
     const propertyData = {
-      title: String(title).trim(),
-      address: String(address).trim(),
-      city: String(city).trim(),
-      state: String(state).trim(),
-      zipCode: String(zipCode).trim(),
-      price: Number(price),
-      beds: Number(beds),
-      baths: Number(baths),
-      size: Number(size),
-      propertyType: propertyType ? String(propertyType).trim() : undefined,
-      yearBuilt: yearBuilt ? Number(yearBuilt) : undefined,
-      description: description ? String(description).trim() : undefined,
-      features: Array.isArray(features) ? features : [],
-      images: Array.isArray(images) ? images.filter(img => typeof img === 'string' && img.trim()) : [],
-      status: 'pending',
-      // Store contact info in description or separate fields if needed
+      owner: user._id,
+      title,
+      address: {
+        street: address,
+        city,
+        state,
+        zipCode,
+        country: 'US'
+      },
+      location: {
+        type: 'Point',
+        coordinates: [parseFloat(longitude) || 0, parseFloat(latitude) || 0]
+      },
+      propertyType,
+      price: parseFloat(price),
+      beds: parseInt(beds),
+      baths: parseFloat(baths),
+      squareMeters: parseFloat(squareMeters),
+      yearBuilt: yearBuilt ? parseInt(yearBuilt) : undefined,
+      description: description || '',
       contactInfo: {
         name: contactName,
         email: contactEmail,
         phone: contactPhone
       },
-      timeframe: timeframe
+      images: processedImages,
+      status: 'draft'
     };
 
-    // Validate numeric fields
-    if (isNaN(propertyData.price) || propertyData.price < 0) {
-      return res.status(400).json(errorResponse('Invalid price value', 400));
-    }
-    if (isNaN(propertyData.beds) || propertyData.beds < 0) {
-      return res.status(400).json(errorResponse('Invalid beds value', 400));
-    }
-    if (isNaN(propertyData.baths) || propertyData.baths < 0) {
-      return res.status(400).json(errorResponse('Invalid baths value', 400));
-    }
-    if (isNaN(propertyData.squareMeters) || propertyData.squareMeters < 0) {
-      return res.status(400).json(errorResponse('Invalid square meters value', 400));
-    }
-
-    // Create property with validated data
     const property = new Property(propertyData);
     await property.save();
-    
-    res.status(201).json(
-      successResponse(property, 'Property submitted successfully')
-    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Property submitted successfully',
+      data: {
+        propertyId: property._id,
+        status: property.status
+      }
+    });
+
   } catch (error) {
     console.error('Property submission error:', error);
     
-    // Handle validation errors specifically
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json(
-        errorResponse(`Validation failed: ${validationErrors.join(', ')}`, 400)
-      );
+      return res.status(400).json({
+        success: false,
+        message: `Validation failed: ${validationErrors.join(', ')}`
+      });
     }
-    
-    res.status(400).json(
-      errorResponse(error.message || 'Failed to submit property', 400)
-    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during property submission'
+    });
   }
 };
 

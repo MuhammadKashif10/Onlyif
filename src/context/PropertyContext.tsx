@@ -154,8 +154,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   // Load properties with filters and pagination
   const loadProperties = async (params: PropertySearchParams = {}) => {
     try {
-      setLoading(true);
-      setError(null);
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
       
       const response = await propertiesApi.getProperties(params);
       
@@ -167,20 +167,39 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       // Ensure properties is always an array
       const properties = Array.isArray(response.properties) ? response.properties : [];
       
-      setProperties(properties);
-      setTotalProperties(response.total || 0);
-      setCurrentPage(response.page || 1);
-      setTotalPages(response.totalPages || 0);
+      dispatch({
+        type: 'SET_PROPERTIES',
+        payload: {
+          properties,
+          pagination: {
+            currentPage: response.page || 1,
+            totalPages: response.totalPages || 1,
+            totalItems: response.total || 0,
+            hasNext: (response.page || 1) < (response.totalPages || 1),
+            hasPrev: (response.page || 1) > 1
+          }
+        }
+      });
     } catch (error) {
       console.error('Error loading properties:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load properties');
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: error instanceof Error ? error.message : 'Failed to load properties' 
+      });
       // Set safe fallback values
-      setProperties([]);
-      setTotalProperties(0);
-      setCurrentPage(1);
-      setTotalPages(0);
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: 'SET_PROPERTIES',
+        payload: {
+          properties: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        }
+      });
     }
   };
 

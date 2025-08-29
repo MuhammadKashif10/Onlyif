@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/reusable/Button';
+import { Input } from '@/components/reusable/Input';
+import { Label } from '@/components/reusable/Label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/reusable/EnhancedCard';
+import { Alert, AlertDescription } from '@/components/reusable/AlertComponent';
 import { Loader2, Calendar, Clock, User, Mail, Phone, MapPin, CheckCircle } from 'lucide-react';
 
 interface BookInspectionProps {

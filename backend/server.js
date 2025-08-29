@@ -28,6 +28,7 @@ const sellerRoutes = require('./routes/sellerRoutes');
 const termsRoutes = require('./routes/termsRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
 const buyerRoutes = require('./routes/buyerRoutes');
+const agentRoutes = require('./routes/agentRoutes');
 
 // Connect to database
 connectDB();
@@ -39,17 +40,13 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001', 
   'http://localhost:3010',  // ✅ Your frontend URL
+  'http://127.0.0.1:3010',  // Add this for local IP
   'https://your-frontend-domain.com'
 ];
 
+// Temporary development CORS (replace the existing corsOptions)
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -95,6 +92,7 @@ app.use('/api/sellers', sellerRoutes);
 app.use('/api/terms', termsRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/buyer', buyerRoutes);
+app.use('/api/agent', agentRoutes);
 app.use('/api/cash-offers', require('./routes/cashOfferRoutes')); // Add this line
 
 // Handle undefined routes

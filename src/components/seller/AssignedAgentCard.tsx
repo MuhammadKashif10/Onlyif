@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/reusable/EnhancedCard';
+import Button from '@/components/reusable/Button';
+import Badge from '@/components/reusable/Badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/reusable/Avatar';
 import { Star, Phone, Mail, MessageCircle, Calendar, MapPin } from 'lucide-react';
 import { Agent } from '@/types/api';
 

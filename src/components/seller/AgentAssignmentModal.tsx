@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/reusable/Dialog';
+import { Button } from '@/components/reusable';
+import { Badge } from '@/components/reusable';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/reusable/Avatar';
 import { Star, Phone, Mail, MapPin } from 'lucide-react';
 import { Agent } from '@/types/api';
 import { agentsApi } from '@/api/agents';

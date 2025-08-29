@@ -3,16 +3,12 @@
 import React from 'react';
 import { useSellerContext } from '@/context/SellerContext';
 import RegistrationPhase from './phases/RegistrationPhase';
-import PropertyDetailsPhase from './phases/PropertyDetailsPhase';
-import MediaUploadPhase from './phases/MediaUploadPhase';
-import SubmitPhase from './phases/SubmitPhase';
+import OtpVerificationPhase from './phases/OtpVerificationPhase';
 import WizardStepper from './WizardStepper';
 
 const phases = [
   { id: 1, title: 'Register', component: RegistrationPhase },
-  { id: 2, title: 'Property Details', component: PropertyDetailsPhase },
-  { id: 3, title: 'Upload Media', component: MediaUploadPhase },
-  { id: 4, title: 'Submit', component: SubmitPhase }
+  { id: 2, title: 'Verify', component: OtpVerificationPhase }
 ];
 
 export default function SellerWizard() {
@@ -26,7 +22,7 @@ export default function SellerWizard() {
           {/* Header */}
           <div className="bg-blue-600 text-white px-6 py-4">
             <h1 className="text-2xl font-bold">Sell Your Property</h1>
-            <p className="text-blue-100 mt-1">Complete the steps below to list your property</p>
+            <p className="text-blue-100 mt-1">Create your account and verify to access your Seller Dashboard</p>
           </div>
 
           {/* Stepper */}

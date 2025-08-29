@@ -153,7 +153,7 @@ export const SellerProvider: React.FC<SellerProviderProps> = ({ children }) => {
   };
 
   const nextPhase = () => {
-    setCurrentPhase(prev => Math.min(prev + 1, 4));
+    setCurrentPhase(prev => Math.min(prev + 1, 2));
   };
 
   const prevPhase = () => {
@@ -161,7 +161,7 @@ export const SellerProvider: React.FC<SellerProviderProps> = ({ children }) => {
   };
 
   const setPhase = (phase: number) => {
-    setCurrentPhase(Math.max(1, Math.min(phase, 4)));
+    setCurrentPhase(Math.max(1, Math.min(phase, 2)));
   };
 
   return (

@@ -6,6 +6,7 @@ import InputField from '../../reusable/InputField';
 import PasswordField from '../../reusable/PasswordField';
 import Button from '../../reusable/Button';
 import { validatePassword, validatePasswordConfirmation } from '../../../utils/passwordValidation';
+import { useAuth } from '../../../context/AuthContext';
 
 interface RegistrationPhaseProps {
   onNext: () => void;
@@ -70,6 +71,10 @@ const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack })
     return Object.keys(newErrors).length === 0;
   };
 
+  // Add import and usage of AuthContext
+  // import { useAuth } from '../../../context/AuthContext';
+  const { register } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -78,14 +83,23 @@ const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack })
     }
 
     setIsLoading(true);
-    
+    setErrors({});
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Register user but do not persist JWT yet (will persist after OTP verification)
+      await register({
+        name: data.name,
+        email: data.email,
+        password: data.password!,
+        type: 'seller',
+        phone: data.phone
+      });
+
+      // Proceed to OTP verification phase
       onNext();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      setErrors({ submit: 'Registration failed. Please try again.' });
+      setErrors({ submit: error.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }

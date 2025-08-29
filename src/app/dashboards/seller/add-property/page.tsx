@@ -91,7 +91,7 @@ export default function AddProperty() {
       // Create FormData for file upload support
       const submitFormData = new FormData();
       
-      // Add property data - Fixed: using formData state instead of FormData object
+      // Add property data
       submitFormData.append('title', formData.title);
       submitFormData.append('address', formData.location);
       submitFormData.append('city', formData.city);
@@ -100,11 +100,16 @@ export default function AddProperty() {
       submitFormData.append('price', formData.price);
       submitFormData.append('beds', formData.bedrooms);
       submitFormData.append('baths', formData.bathrooms);
-      submitFormData.append('squareMeters', formData.squareMeters); // Changed from size
+      submitFormData.append('squareMeters', formData.squareMeters);
       submitFormData.append('description', formData.description);
       submitFormData.append('propertyType', formData.propertyType);
       submitFormData.append('yearBuilt', formData.yearBuilt);
       submitFormData.append('lotSize', formData.lotSize);
+      
+      // Add required contact info (you may want to get these from user profile or form)
+      submitFormData.append('contactName', 'Property Owner'); // Replace with actual contact name
+      submitFormData.append('contactEmail', 'owner@example.com'); // Replace with actual email
+      submitFormData.append('contactPhone', '555-0123'); // Replace with actual phone
       
       // Add uploaded files
       propertyImages.forEach((file, index) => {
@@ -279,9 +284,9 @@ export default function AddProperty() {
                     />
                     
                     <InputField
-                      label="Square Meters" {/* Changed from Square Feet */}
+                      label="Square Meters"
                       type="number"
-                      placeholder="Property size in sq m" {/* Changed placeholder */}
+                      placeholder="Property size in sq m"
                       value={formData.squareMeters}
                       onChange={(e) => handleInputChange('squareMeters', e.target.value)}
                       required
