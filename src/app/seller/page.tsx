@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Plus, Home, DollarSign, Eye, TrendingUp, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { sellerApi, SellerStats } from '@/api/seller';
 import { propertiesApi } from '@/api';
 import { Property } from '@/types/api';
 
 export default function SellerDashboard() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  
   const [sellerStats, setSellerStats] = useState<SellerStats>({
     totalOffers: 0,
     pendingOffers: 0,
@@ -34,17 +39,36 @@ export default function SellerDashboard() {
     description: ''
   });
 
+  // Authentication check
   useEffect(() => {
+    if (authLoading) return;
+    
+    if (!isAuthenticated || !user) {
+      router.push('/signin');
+      return;
+    }
+    
+    if (user.role !== 'seller') {
+      router.push('/dashboards');
+      return;
+    }
+    
+    // Load data once authenticated
     loadData();
-  }, []);
+  }, [authLoading, isAuthenticated, user, router]);
 
   const loadData = async () => {
+    if (!user?.id) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
       
-      // TODO: Get actual seller ID from authentication context
-      const sellerId = 'current-seller-id'; // Replace with actual seller ID
+      const sellerId = user.id;
       
       // Fetch seller statistics
       const stats = await sellerApi.getSellerOverview(sellerId);
@@ -62,70 +86,67 @@ export default function SellerDashboard() {
       console.error('Error loading seller data:', err);
       setError('Failed to load dashboard data. Please try again.');
       
-      // Fallback to mock data if API fails
+      // Set empty state instead of mock data
       setSellerStats({
-        totalOffers: 12,
-        pendingOffers: 3,
-        acceptedOffers: 2,
-        averageOfferValue: 425000,
-        totalProperties: 5,
-        totalViews: 1247,
-        averagePropertyValue: 520000
+        totalOffers: 0,
+        pendingOffers: 0,
+        acceptedOffers: 0,
+        averageOfferValue: 0,
+        totalProperties: 0,
+        totalViews: 0,
+        averagePropertyValue: 0
       });
       
-      setActiveListings([
-        {
-          id: '1',
-          title: 'Modern Downtown Condo',
-          address: '123 Main St, Austin, TX 78701',
-          city: 'Austin',
-          state: 'TX',
-          zipCode: '78701',
-          price: 450000,
-          beds: 2,
-          baths: 2,
-          size: 1200,
-          propertyType: 'Condo',
-          status: 'public',
-          dateListed: '2024-01-15',
-          daysOnMarket: 45,
-          mainImage: '/images/02.jpg',
-          images: ['/images/02.jpg'],
-          description: 'Beautiful modern condo in downtown Austin',
-          yearBuilt: 2018,
-          lotSize: 0.1,
-          featured: true,
-          features: ['Modern appliances', 'City views'],
-          coordinates: { lat: 30.2672, lng: -97.7431 },
-          agent: {
-            id: 'agent1',
-            name: 'Sarah Johnson',
-            title: 'Senior Agent',
-            phone: '(512) 555-0123',
-            email: 'sarah@onlyif.com',
-            avatar: '/images/agent1.jpg',
-            rating: 4.8,
-            reviews: 127,
-            experience: '8 years',
-            specializations: ['Condos'],
-            languages: ['English'],
-            bio: 'Experienced agent',
-            propertiesSold: 156,
-            averageDaysOnMarket: 28,
-            office: 'OnlyIf Downtown',
-            socialMedia: {}
-          },
-          similarProperties: [],
-          hasRequiredMedia: true,
-          isAdminApproved: true,
-          canChangeVisibility: true,
-          visibilityLastUpdated: '2024-01-15'
-        }
-      ]);
+      setActiveListings([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  // Show error if not authenticated
+  if (!isAuthenticated || !user || user.role !== 'seller') {
+    return null; // Will redirect in useEffect
+  }
+
+  // Empty state component
+  const EmptyState = ({ title, description, actionText, onAction }: {
+    title: string;
+    description: string;
+    actionText?: string;
+    onAction?: () => void;
+  }) => (
+    <div className="text-center py-12">
+      <div className="mx-auto h-12 w-12 text-gray-400">
+        <Home className="h-12 w-12" />
+      </div>
+      <h3 className="mt-2 text-sm font-medium text-gray-900">{title}</h3>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+      {actionText && onAction && (
+        <div className="mt-6">
+          <button
+            onClick={onAction}
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
+            {actionText}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleAddListing = async (e: React.FormEvent) => {
     e.preventDefault();

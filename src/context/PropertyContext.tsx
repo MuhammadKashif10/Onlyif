@@ -126,6 +126,7 @@ function propertyReducer(state: PropertyState, action: PropertyAction): Property
   }
 }
 
+// Add refresh function to context interface
 interface PropertyContextType {
   state: PropertyState;
   // Property CRUD operations
@@ -143,6 +144,7 @@ interface PropertyContextType {
   setFilters: (filters: PropertySearchParams) => void;
   clearError: () => void;
   resetPagination: () => void;
+  refreshProperties: () => Promise<void>;
 }
 
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
@@ -255,10 +257,24 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await propertiesApi.submitProperty(propertyData);
-      dispatch({ type: 'ADD_PROPERTY', payload: response.data || response });
+      const newProperty = response.data || response;
+      
+      // Add the property to local state immediately
+      dispatch({ type: 'ADD_PROPERTY', payload: newProperty });
+      
+      // Refresh the entire property list to ensure consistency with backend
+      await loadProperties(state.filters);
+      
+      // Also refresh featured properties if the new property is featured
+      if (newProperty.featured) {
+        await loadFeaturedProperties();
+      }
+      
+      return newProperty;
     } catch (error) {
       console.error('Error adding property:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to add property' });
+      throw error;
     }
   };
 
@@ -351,6 +367,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
+  // Add refresh function
+  const refreshProperties = async () => {
+    await loadProperties(state.filters);
+    await loadFeaturedProperties();
+  };
+  
+  // Update the context value
   const value: PropertyContextType = {
     state,
     loadProperties,
@@ -364,7 +387,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     toggleFavorite,
     setFilters,
     clearError,
-    resetPagination
+    resetPagination,
+    refreshProperties
   };
 
   return (

@@ -540,9 +540,9 @@ const mockProperties = [
 export const propertiesApi = {
   async getProperties(params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
+        await delay(800);
+        // Mock implementation
         const { page = 1, limit = 10, search, minPrice, maxPrice, beds, baths, propertyType, city } = params;
         
         let filteredProperties = [...mockProperties];
@@ -607,15 +607,8 @@ export const propertiesApi = {
             totalPages: data.totalPages || Math.ceil((data.total || properties.length) / (data.limit || 10))
           };
         } catch (error) {
-          console.error('API call failed:', error);
-          // Return safe fallback structure
-          return {
-            properties: [],
-            total: 0,
-            page: 1,
-            limit: 10,
-            totalPages: 0
-          };
+          console.error('Error fetching properties:', error);
+          throw error;
         }
       }
     );
@@ -628,7 +621,7 @@ export const propertiesApi = {
         await delay(500);
         const property = mockProperties.find(p => p.id === id);
         if (!property) {
-          throw new Error('Property not found');
+          throw new Error(`Property with id ${id} not found`);
         }
         return property;
       },
@@ -651,11 +644,10 @@ export const propertiesApi = {
     filters: Partial<PropertySearchParams> = {}
   ): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
-        // Simple distance calculation for mock data
-        const nearbyProperties = mockProperties.filter(property => {
+        await delay(600);
+        // Mock implementation - filter by distance (simplified)
+        const filteredProperties = mockProperties.filter(property => {
           const distance = Math.sqrt(
             Math.pow(property.coordinates.lat - latitude, 2) + 
             Math.pow(property.coordinates.lng - longitude, 2)
@@ -664,14 +656,13 @@ export const propertiesApi = {
         });
         
         return {
-          properties: nearbyProperties,
-          total: nearbyProperties.length,
+          properties: filteredProperties,
+          total: filteredProperties.length,
           page: 1,
-          limit: nearbyProperties.length,
+          limit: filteredProperties.length,
           totalPages: 1
         };
       },
-      // Real API call
       async () => {
         const response = await apiClient.get('/properties/near', {
           params: { latitude, longitude, radius, ...filters }
@@ -683,18 +674,18 @@ export const propertiesApi = {
 
   async submitProperty(propertyData: Partial<Property>): Promise<Property> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(1000);
+        // Mock implementation
         const newProperty = {
           ...propertyData,
           id: Date.now().toString(),
           dateListed: new Date().toISOString().split('T')[0],
-          daysOnMarket: 0
-        } as Property;
-        return newProperty;
+          daysOnMarket: 0,
+          status: 'draft' as const
+        };
+        return newProperty as Property;
       },
-      // Real API call
       async () => {
         const response = await apiClient.post('/properties', propertyData);
         return response.data;
@@ -704,16 +695,14 @@ export const propertiesApi = {
 
   async updateProperty(id: string, propertyData: Partial<Property>): Promise<Property> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
+        await delay(800);
         const existingProperty = mockProperties.find(p => p.id === id);
         if (!existingProperty) {
-          throw new Error('Property not found');
+          throw new Error(`Property with id ${id} not found`);
         }
         return { ...existingProperty, ...propertyData };
       },
-      // Real API call
       async () => {
         const response = await apiClient.put(`/properties/${id}`, propertyData);
         return response.data;
@@ -723,13 +712,15 @@ export const propertiesApi = {
 
   async deleteProperty(id: string): Promise<void> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(500);
+        const index = mockProperties.findIndex(p => p.id === id);
+        if (index === -1) {
+          throw new Error(`Property with id ${id} not found`);
+        }
         // In real implementation, this would remove from array
-        console.log(`Mock: Deleted property ${id}`);
+        console.log(`Mock: Property ${id} deleted`);
       },
-      // Real API call
       async () => {
         await apiClient.delete(`/properties/${id}`);
       }
@@ -738,12 +729,10 @@ export const propertiesApi = {
 
   async getFeaturedProperties(limit: number = 6): Promise<Property[]> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
+        await delay(400);
         return mockProperties.filter(p => p.featured).slice(0, limit);
       },
-      // Real API call
       async () => {
         const response = await apiClient.get('/properties/featured', {
           params: { limit }
@@ -755,17 +744,18 @@ export const propertiesApi = {
 
   async getPropertyStats(): Promise<any> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
+        await delay(300);
         return {
           totalProperties: mockProperties.length,
           averagePrice: mockProperties.reduce((sum, p) => sum + p.price, 0) / mockProperties.length,
-          propertyTypes: [...new Set(mockProperties.map(p => p.propertyType))],
-          cities: [...new Set(mockProperties.map(p => p.city))]
+          featuredCount: mockProperties.filter(p => p.featured).length,
+          cityDistribution: mockProperties.reduce((acc, p) => {
+            acc[p.city] = (acc[p.city] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)
         };
       },
-      // Real API call
       async () => {
         const response = await apiClient.get('/properties/stats');
         return response.data;
@@ -775,15 +765,13 @@ export const propertiesApi = {
 
   async uploadPropertyImages(propertyId: string, images: File[]): Promise<string[]> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(2000);
-        // Return mock URLs
+        // Mock implementation - return fake URLs
         return images.map((_, index) => 
           `https://images.unsplash.com/photo-${Date.now()}-${index}?w=800&h=600&fit=crop`
         );
       },
-      // Real API call
       async () => {
         const formData = new FormData();
         images.forEach((image, index) => {
@@ -802,18 +790,17 @@ export const propertiesApi = {
 
   async getPropertyBySlug(slug: string): Promise<Property> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(500);
-        // Convert slug back to ID for mock data
-        const id = slug.split('-').pop();
-        const property = mockProperties.find(p => p.id === id);
+        // Mock implementation - find by title converted to slug
+        const property = mockProperties.find(p => 
+          p.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '') === slug
+        );
         if (!property) {
-          throw new Error('Property not found');
+          throw new Error(`Property with slug ${slug} not found`);
         }
         return property;
       },
-      // Real API call
       async () => {
         const response = await apiClient.get(`/properties/slug/${slug}`);
         return response.data;
@@ -823,24 +810,28 @@ export const propertiesApi = {
 
   async getPropertiesByOwner(ownerId: string, params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
-      // Mock implementation
       async () => {
-        await delay(500);
-        // Filter by agent ID for mock data
+        await delay(600);
+        // Mock implementation - filter by agent id as owner
         const ownerProperties = mockProperties.filter(p => p.agent.id === ownerId);
+        
+        const { page = 1, limit = 10 } = params;
+        const total = ownerProperties.length;
+        const totalPages = Math.ceil(total / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const properties = ownerProperties.slice(startIndex, endIndex);
+        
         return {
-          properties: ownerProperties,
-          total: ownerProperties.length,
-          page: params.page || 1,
-          limit: params.limit || 10,
-          totalPages: Math.ceil(ownerProperties.length / (params.limit || 10))
+          properties,
+          total,
+          page,
+          limit,
+          totalPages
         };
       },
-      // Real API call
       async () => {
-        const response = await apiClient.get(`/properties/owner/${ownerId}`, {
-          params
-        });
+        const response = await apiClient.get(`/properties/owner/${ownerId}`, { params });
         return response.data;
       }
     );
@@ -848,14 +839,12 @@ export const propertiesApi = {
 
   async toggleFavorite(propertyId: string): Promise<{ isFavorite: boolean }> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(300);
-        // Mock toggle logic
+        // Mock implementation
         const isFavorite = Math.random() > 0.5;
         return { isFavorite };
       },
-      // Real API call
       async () => {
         const response = await apiClient.post(`/properties/${propertyId}/favorite`);
         return response.data;
@@ -865,67 +854,78 @@ export const propertiesApi = {
 
   async getFavoriteProperties(params: PropertySearchParams = {}): Promise<PaginatedPropertiesResponse> {
     return withMockFallback(
-      // Mock implementation
       async () => {
         await delay(500);
-        // Return a subset of mock properties as favorites
+        // Mock implementation - return random subset
         const favoriteProperties = mockProperties.slice(0, 3);
+        
+        const { page = 1, limit = 10 } = params;
+        const total = favoriteProperties.length;
+        const totalPages = Math.ceil(total / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const properties = favoriteProperties.slice(startIndex, endIndex);
+        
         return {
-          properties: favoriteProperties,
-          total: favoriteProperties.length,
-          page: params.page || 1,
-          limit: params.limit || 10,
-          totalPages: 1
+          properties,
+          total,
+          page,
+          limit,
+          totalPages
         };
       },
-      // Real API call
       async () => {
-        const response = await apiClient.get('/properties/favorites', {
-          params
-        });
+        const response = await apiClient.get('/properties/favorites', { params });
         return response.data;
       }
     );
   },
+
   async getFilterOptions(): Promise<FilterOptionsData> {
     return withMockFallback(
       async () => {
-        await delay(500);
-        const response = await apiClient.get('/api/properties/filter-options');
-        return response.data;
+        await delay(200);
+        return {
+          propertyTypes: ['Condo', 'Single Family', 'Townhouse', 'Loft'],
+          cities: ['Austin'],
+          priceRanges: [
+            { min: 0, max: 500000, label: 'Under $500K' },
+            { min: 500000, max: 1000000, label: '$500K - $1M' },
+            { min: 1000000, max: null, label: 'Over $1M' }
+          ],
+          bedrooms: [1, 2, 3, 4, 5],
+          bathrooms: [1, 2, 3, 4]
+        };
       },
       async () => {
-        await delay(300);
-        
-        // Extract unique values from mock data
-        const propertyTypes = [...new Set(mockProperties.map(p => p.propertyType))];
-        const cities = [...new Set(mockProperties.map(p => p.city))];
-        const prices = mockProperties.map(p => p.price);
-        const sizes = mockProperties.map(p => p.size); // Already in square meters
-        
-        return {
-          propertyTypes,
-          cities,
-          priceRange: {
-            min: Math.min(...prices),
-            max: Math.max(...prices)
-          },
-          sizeRange: {
-            min: Math.min(...sizes), // In square meters
-            max: Math.max(...sizes)  // In square meters
-          }
+        const response = await apiClient.get('/properties/filter-options');
+        return response.data;
+      }
+    );
+  },
+
+  async createProperty(propertyData: any) {
+    return withMockFallback(
+      async () => {
+        await delay(1000);
+        const newProperty = {
+          ...propertyData,
+          id: Date.now().toString(),
+          dateListed: new Date().toISOString().split('T')[0],
+          daysOnMarket: 0,
+          status: 'draft' as const
         };
+        return newProperty;
+      },
+      async () => {
+        const response = await apiClient.post('/properties', propertyData);
+        return response.data;
       }
     );
   }
 };
 
-// Remove everything from line 890 to the end of the file (line 966)
-// The duplicate content includes:
-// - Comments about size conversions
-// - An orphaned property object for 'Cozy Bungalow'
-// This content should be completely deleted
-
-// The file should end after line 888 with:
 export default propertiesApi;
 export const submitProperty = propertiesApi.submitProperty;
+export const getFeaturedProperties = propertiesApi.getFeaturedProperties;
+export const getFilterOptions = propertiesApi.getFilterOptions;

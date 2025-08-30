@@ -33,14 +33,8 @@ interface EmailNotificationRequest {
 }
 
 class NotificationAPI {
-  // Add a new method that matches the expected interface
-  async getNotifications(userId: string, userType: 'buyer' | 'seller' | 'agent'): Promise<Notification[]> {
-    const response = await this.getAllNotifications(1, 20, 'all');
-    return response.notifications.filter(n => n.userId === userId && n.userType === userType);
-  }
-
-  // Rename the existing method
-  async getAllNotifications(page = 1, limit = 20, filter = 'all'): Promise<NotificationResponse> {
+  // Fix the getNotifications method to match component expectations
+  async getNotifications(page = 1, limit = 20, filter = 'all'): Promise<NotificationResponse> {
     const mockResponse = {
       notifications: [
         {
@@ -70,6 +64,13 @@ class NotificationAPI {
     return withMockFallback(() => Promise.resolve(mockResponse), realCall);
   }
 
+  // Add a method for user-specific notifications
+  async getUserNotifications(userId: string, userType: 'buyer' | 'seller' | 'agent'): Promise<Notification[]> {
+    const response = await this.getNotifications(1, 20, 'all');
+    return response.notifications.filter(n => n.userId === userId && n.userType === userType);
+  }
+
+  // Remove the old getAllNotifications method or rename it
   async markAsRead(notificationId: string): Promise<boolean> {
     const realCall = async () => {
       await apiClient.patch(`/notifications/${notificationId}`, { action: 'mark_read' });

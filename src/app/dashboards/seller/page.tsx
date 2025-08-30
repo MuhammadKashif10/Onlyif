@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components';
 import Sidebar from '@/components/main/Sidebar';
 import { sellerApi } from '@/api/seller';
@@ -54,6 +55,7 @@ interface EnhancedProperty extends Property {
 
 const SellerDashboard = () => {
   const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   
   // State management
   const [stats, setStats] = useState<SellerStats | null>(null);
@@ -70,45 +72,104 @@ const SellerDashboard = () => {
   const [isGettingCashOffer, setIsGettingCashOffer] = useState(false);
   const [isSchedulingInspection, setIsSchedulingInspection] = useState(false);
   
-  // Get seller ID from user session/auth (you'll need to implement this based on your auth system)
-  const sellerId = 'current-seller-id'; // Replace with actual seller ID from auth
-
+  // Authentication check
+  useEffect(() => {
+    if (authLoading) return;
+    
+    if (!isAuthenticated || !user) {
+      router.push('/signin');
+      return;
+    }
+    
+    if (user.role !== 'seller') {
+      router.push('/dashboards');
+      return;
+    }
+  }, [authLoading, isAuthenticated, user, router]);
+  
+  // Get seller ID from authenticated user
+  const sellerId = user?.id;
+  
   // Fetch seller statistics
   const fetchStats = async () => {
+    if (!sellerId) return;
+    
     try {
       setIsLoadingStats(true);
       setStatsError(null);
       
-      // Real API call instead of mock
       const response = await sellerApi.getSellerOverview(sellerId);
       setStats(response);
     } catch (error) {
       console.error('Error fetching stats:', error);
       setStatsError('Failed to load dashboard statistics');
+      // Set empty state for graceful handling
+      setStats({
+        totalOffers: 0,
+        pendingOffers: 0,
+        acceptedOffers: 0,
+        averageOfferValue: 0,
+        totalProperties: 0,
+        activeProperties: 0,
+        soldProperties: 0,
+        averagePropertyValue: 0,
+        totalViews: 0,
+        totalInquiries: 0
+      });
     } finally {
       setIsLoadingStats(false);
     }
   };
-
+  
   // Fetch seller's property listings
   const fetchListings = async () => {
+    if (!sellerId) return;
+    
     try {
       setIsLoadingListings(true);
       setListingsError(null);
       const response = await sellerApi.getSellerListings(sellerId, {
         page: 1,
         limit: 10,
-        sortBy: 'dateListed',
-        sortOrder: 'desc'
+        status: 'active'
       });
-      setActiveListings(response.properties);
+      
+      // Transform properties to include additional fields
+      const enhancedProperties = response.properties.map(property => ({
+        ...property,
+        inquiries: 0, // This would come from API
+        pendingInquiries: 0,
+        views: property.viewCount || 0,
+        primaryImage: property.images?.[0]?.url || null
+      }));
+      
+      setActiveListings(enhancedProperties);
     } catch (error) {
       console.error('Error fetching listings:', error);
       setListingsError('Failed to load property listings');
+      setActiveListings([]); // Empty state
     } finally {
       setIsLoadingListings(false);
     }
   };
+  
+  // Load data when component mounts and user is authenticated
+  useEffect(() => {
+    if (sellerId) {
+      fetchStats();
+      fetchListings();
+    }
+  }, [sellerId]);
+  
+  // Show loading while checking authentication
+  if (authLoading) {
+    return <LoadingSpinner />;
+  }
+  
+  // Show error if not authenticated
+  if (!isAuthenticated || !user || user.role !== 'seller') {
+    return null; // Will redirect in useEffect
+  }
 
   // Initial data fetch
   useEffect(() => {

@@ -6,6 +6,7 @@ export { contactApi } from './contact';
 export { offersApi } from './offers';
 export { adminApi } from './admin';
 export { sellerApi } from './seller';
+export { buyerApi } from './buyer';
 
 // Re-export types for convenience
 export type {
@@ -25,8 +26,14 @@ export type {
   PaginatedResponse
 } from '@/types/api';
 
-// Remove this problematic line:
-// export type { OfferRequest, OfferResponse } from './offers';
+// Export buyer types
+export type {
+  SavedProperty,
+  ViewedProperty,
+  ScheduledViewing,
+  ActiveOffer,
+  BuyerStats
+} from './buyer';
 
 export * from './messages';
 export * from './notifications';
@@ -40,3 +47,4 @@ export * from './contact';
 export * from './testimonials';
 export * from './admin';
 export * from './seller';
+export * from './buyer';

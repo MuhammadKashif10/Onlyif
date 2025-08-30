@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation'; // Add this import
+import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
   email: string;
   name: string;
   type: 'buyer' | 'seller' | 'agent' | 'admin';
-  role: 'buyer' | 'seller' | 'agent' | 'admin'; // Add role field for backend compatibility
+  role: 'buyer' | 'seller' | 'agent' | 'admin';
 }
 
 interface AuthContextType {
@@ -29,9 +29,7 @@ interface RegisterData {
   password: string;
   name: string;
   type: 'buyer' | 'seller' | 'agent';
-  // Agent-specific fields
   phone?: string;
-  // licenseNumber?: string; // REMOVED
   brokerage?: string;
   yearsOfExperience?: number;
   specialization?: string;
@@ -43,64 +41,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter(); // Add this line
+  const router = useRouter();
+
+  // Session validation function
+  const validateSession = async (): Promise<boolean> => {
+    if (typeof window === 'undefined') return false;
+    
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // Token is invalid, clear storage
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        return false;
+      }
+
+      const data = await response.json();
+      const userData = {
+        ...data.data,
+        type: data.data.role,
+        role: data.data.role,
+      };
+      
+      setUser(userData);
+      // Update stored user data
+      localStorage.setItem('user', JSON.stringify(userData));
+      return true;
+    } catch (error) {
+      console.error('Session validation failed:', error);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      return false;
+    }
+  };
 
   useEffect(() => {
-    // Check for existing user session and token only in browser
-    if (typeof window !== 'undefined') {
-      const savedUser = sessionStorage.getItem('user');
-      const savedToken = sessionStorage.getItem('token');
+    const initializeAuth = async () => {
+      setIsLoading(true);
       
-      if (savedUser && savedToken) {
-        try {
-          setUser(JSON.parse(savedUser));
-        } catch (error) {
-          sessionStorage.removeItem('user');
-          sessionStorage.removeItem('token');
-        }
-      }
-    }
-    setIsLoading(false);
-
-    // Add event listeners for browser close/refresh
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Clear session data when browser is closing
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('user');
-      }
-    };
-
-    const handleUnload = () => {
-      // Clear session data when page is unloading
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('user');
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      // Optional: Clear session when tab becomes hidden for extended period
-      if (document.visibilityState === 'hidden') {
-        // You can add a timeout here if needed
-        setTimeout(() => {
-          if (document.visibilityState === 'hidden') {
-            sessionStorage.removeItem('user');
+        const savedUser = localStorage.getItem('user');
+        const savedToken = localStorage.getItem('token');
+        
+        if (savedUser && savedToken) {
+          // Validate session with backend
+          const isValid = await validateSession();
+          if (!isValid) {
             setUser(null);
           }
-        }, 30000); // 30 seconds of inactivity
+        } else {
+          setUser(null);
+        }
       }
+      
+      setIsLoading(false);
     };
 
-    // Add event listeners
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('unload', handleUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup event listeners
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('unload', handleUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -108,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      // Call real backend API instead of mock
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -123,18 +129,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       
-      // Store both user data and JWT token
       const userData = {
         ...data.data.user,
-        type: data.data.user.role, // Map 'role' to 'type' for frontend compatibility
-        role: data.data.user.role, // Keep 'role' for backend compatibility
+        type: data.data.user.role,
+        role: data.data.user.role,
       };
       
       setUser(userData);
-      // Store user data and token separately
+      // Use localStorage for persistence
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('user', JSON.stringify(userData));
-        sessionStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', data.data.token);
       }
     } catch (err) {
       setError('Invalid email or password');
@@ -149,7 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      // Use the restricted admin login endpoint
       const response = await fetch('http://localhost:5000/api/auth/admin/login', {
         method: 'POST',
         headers: {
@@ -172,8 +176,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       setUser(userData);
-      sessionStorage.setItem('user', JSON.stringify(userData));
-      sessionStorage.setItem('token', data.data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', data.data.token);
     } catch (err) {
       setError('Invalid admin credentials or unauthorized account');
       throw err;
@@ -187,33 +191,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      // Split the full name into firstName and lastName
       const nameParts = userData.name.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
       
-      // Prepare request body
       const requestBody: any = {
-        firstName, // ✅ Send firstName separately
-        lastName,  // ✅ Send lastName separately
+        firstName,
+        lastName,
         email: userData.email,
         password: userData.password,
-        role: userData.type, // Map 'type' to 'role' for backend
+        role: userData.type,
       };
   
-      // Add phone field for all user types if provided
       if (userData.phone) {
         requestBody.phone = userData.phone;
       }
   
-      // Add agent-specific fields if registering as agent
       if (userData.type === 'agent') {
         requestBody.brokerage = userData.brokerage;
         requestBody.yearsOfExperience = userData.yearsOfExperience;
         requestBody.specialization = userData.specialization;
       }
   
-      // Call real backend API instead of mock
       const response = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: {
@@ -231,13 +230,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const newUser = {
         ...data.data.user,
-        type: data.data.user.role, // Map 'role' to 'type' for compatibility
+        type: data.data.user.role,
       };
       
       setUser(newUser);
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('user', JSON.stringify(newUser));
-        sessionStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        localStorage.setItem('token', data.data.token);
       }
     } catch (err) {
       setError('Registration failed');
@@ -251,16 +250,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setError(null);
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      // Also clear any remaining sessionStorage items
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('token');
     }
-    // Clear both user data and token
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    
-    // Redirect to home page after logout
     router.push('/');
   };
 
@@ -281,8 +276,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to send OTP');
       }
-
-      // OTP sent successfully
     } catch (err) {
       setError('Failed to send OTP');
       throw err;
@@ -311,7 +304,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       
-      // Store user data and JWT token after successful OTP verification
       const userData = {
         ...data.data.user,
         type: data.data.user.role,
@@ -319,8 +311,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       setUser(userData);
-      sessionStorage.setItem('user', JSON.stringify(userData));
-      sessionStorage.setItem('token', data.data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', data.data.token);
     } catch (err) {
       setError('OTP verification failed');
       throw err;

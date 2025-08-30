@@ -19,8 +19,8 @@ async function request<T>(
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
   
-  // Get JWT token from sessionStorage only in browser
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+  // Get JWT token from localStorage only in browser
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',

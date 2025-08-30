@@ -1,77 +1,215 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Navbar } from '@/components';
-import { Card, Button } from '@/components/reusable';
-
-interface DashboardStats {
-  savedProperties: number;
-  viewedProperties: number;
-  scheduledViewings: number;
-  activeOffers: number;
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { buyerApi, type BuyerStats } from '@/api/buyer';
+import { 
+  Home, 
+  Heart, 
+  Eye, 
+  Calendar, 
+  DollarSign, 
+  MessageSquare, 
+  Search, 
+  Bell,
+  Clock,
+  MapPin,
+  Bath,
+  Bed,
+  Square
+} from 'lucide-react';
 
 export default function BuyerDashboard() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    savedProperties: 0,
-    viewedProperties: 0,
-    scheduledViewings: 0,
-    activeOffers: 0
-  });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const { user, isLoading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [buyerStats, setBuyerStats] = useState<BuyerStats>({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
+  const [savedProperties, setSavedProperties] = useState<any[]>([]);
+  const [viewedProperties, setViewedProperties] = useState<any[]>([]);
+  const [scheduledViewings, setScheduledViewings] = useState<any[]>([]);
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load dashboard data
+    // Don't load data if still checking auth or no user
+    if (authLoading) return;
+    
+    if (!user) {
+      router.push('/signin');
+      return;
+    }
+
     const loadDashboardData = async () => {
       try {
-        // Mock data - replace with actual API calls
-        setStats({
-          savedProperties: 12,
-          viewedProperties: 45,
-          scheduledViewings: 3,
-          activeOffers: 2
-        });
+        setLoading(true);
+        setError(null);
         
-        setRecentActivity([
-          { id: 1, type: 'property_view', message: 'Viewed Modern Downtown Condo', time: '2 hours ago' },
-          { id: 2, type: 'property_save', message: 'Saved Luxury Family Home', time: '1 day ago' },
-          { id: 3, type: 'viewing_scheduled', message: 'Scheduled viewing for Cozy Apartment', time: '2 days ago' }
-        ]);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        // Load buyer stats with fallback
+        try {
+          const stats = await buyerApi.getBuyerStats();
+          setBuyerStats(stats || { savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
+        } catch (err) {
+          console.error('Failed to load buyer stats:', err);
+          setBuyerStats({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
+        }
+
+        // Load saved properties with fallback
+        try {
+          const savedPropsResponse = await buyerApi.getSavedProperties({ limit: 6 });
+          if (savedPropsResponse?.properties?.length > 0) {
+            setSavedProperties(savedPropsResponse.properties.map(p => ({
+              id: p.id,
+              title: p.property?.title || 'Untitled Property',
+              price: p.property?.price || 0,
+              location: p.property?.location || 'Location not specified',
+              bedrooms: p.property?.bedrooms || 0,
+              bathrooms: p.property?.bathrooms || 0,
+              sqft: p.property?.sqft || 0,
+              image: p.property?.images?.[0] || '/api/placeholder/300/200',
+              savedAt: p.savedAt
+            })));
+          } else {
+            setSavedProperties([]);
+          }
+        } catch (err) {
+          console.error('Failed to load saved properties:', err);
+          setSavedProperties([]);
+        }
+
+        // Load viewed properties with fallback
+        try {
+          const viewedPropsResponse = await buyerApi.getViewedProperties({ limit: 6 });
+          if (viewedPropsResponse?.properties?.length > 0) {
+            setViewedProperties(viewedPropsResponse.properties.map(p => ({
+              id: p.id,
+              title: p.property?.title || 'Untitled Property',
+              price: p.property?.price || 0,
+              location: p.property?.location || 'Location not specified',
+              bedrooms: p.property?.bedrooms || 0,
+              bathrooms: p.property?.bathrooms || 0,
+              sqft: p.property?.sqft || 0,
+              image: p.property?.images?.[0] || '/api/placeholder/300/200',
+              viewedAt: p.viewedAt,
+              viewCount: p.viewCount || 1
+            })));
+          } else {
+            setViewedProperties([]);
+          }
+        } catch (err) {
+          console.error('Failed to load viewed properties:', err);
+          setViewedProperties([]);
+        }
+
+        // Load scheduled viewings with fallback
+        try {
+          const viewingsResponse = await buyerApi.getScheduledViewings({ limit: 6 });
+          setScheduledViewings(viewingsResponse?.viewings || []);
+        } catch (err) {
+          console.error('Failed to load scheduled viewings:', err);
+          setScheduledViewings([]);
+        }
+
+        // Load active offers with fallback
+        try {
+          const offersResponse = await buyerApi.getActiveOffers({ limit: 6 });
+          setActiveOffers(offersResponse?.offers || []);
+        } catch (err) {
+          console.error('Failed to load active offers:', err);
+          setActiveOffers([]);
+        }
+
+        // Load recent activity with fallback
+        try {
+          const activity = await buyerApi.getRecentActivity(5);
+          setRecentActivity(activity || []);
+        } catch (err) {
+          console.error('Failed to load recent activity:', err);
+          setRecentActivity([]);
+        }
+
+      } catch (err) {
+        console.error('Dashboard loading error:', err);
+        setError('Failed to load dashboard data. Please try refreshing the page.');
+        // Set empty defaults
+        setBuyerStats({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
+        setSavedProperties([]);
+        setViewedProperties([]);
+        setScheduledViewings([]);
+        setActiveOffers([]);
+        setRecentActivity([]);
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (user) {
-      loadDashboardData();
-    }
-  }, [user]);
+    loadDashboardData();
+  }, [user, authLoading, router]);
 
-  if (isLoading) {
+  const handleViewAllSaved = () => {
+    router.push('/dashboards/buyer/saved-properties');
+  };
+
+  const handleViewAllViewed = () => {
+    router.push('/dashboards/buyer/viewed-properties');
+  };
+
+  const handleViewAllViewings = () => {
+    router.push('/dashboards/buyer/scheduled-viewings');
+  };
+
+  const handleViewAllOffers = () => {
+    router.push('/dashboards/buyer/active-offers');
+  };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if no user
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 mb-4">Please log in to access your dashboard.</p>
+          <Button onClick={() => router.push('/signin')}>Login</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching dashboard data
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!user || user.role !== 'buyer') {
+  // Show error state
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Card className="p-8 text-center max-w-md">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
-            <p className="text-gray-600 mb-4">This dashboard is only accessible to buyers.</p>
-            <Button onClick={() => router.push('/signin?type=buyer')}>Sign In as Buyer</Button>
-          </Card>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );
@@ -79,177 +217,289 @@ export default function BuyerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.firstName || user.name || 'Buyer'}!
-          </h1>
-          <p className="text-gray-600">
-            Track your property search progress and manage your home buying journey.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Buyer Dashboard</h1>
+          <p className="text-gray-600 mt-2">Welcome back, {user.name}! Here's your property search overview.</p>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.savedProperties}</p>
-                <p className="text-sm text-gray-600">Saved Properties</p>
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Saved Properties</CardTitle>
+              <Heart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{buyerStats.savedProperties}</div>
+              <p className="text-xs text-muted-foreground">Properties you've saved</p>
+            </CardContent>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.viewedProperties}</p>
-                <p className="text-sm text-gray-600">Viewed Properties</p>
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Viewed Properties</CardTitle>
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{buyerStats.viewedProperties}</div>
+              <p className="text-xs text-muted-foreground">Properties you've viewed</p>
+            </CardContent>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.scheduledViewings}</p>
-                <p className="text-sm text-gray-600">Scheduled Viewings</p>
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Scheduled Viewings</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{buyerStats.scheduledViewings}</div>
+              <p className="text-xs text-muted-foreground">Upcoming viewings</p>
+            </CardContent>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.activeOffers}</p>
-                <p className="text-sm text-gray-600">Active Offers</p>
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{buyerStats.activeOffers}</div>
+              <p className="text-xs text-muted-foreground">Pending offers</p>
+            </CardContent>
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <Button 
-                onClick={() => router.push('/browse')} 
-                className="w-full justify-start"
-                variant="outline"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Browse Properties
-              </Button>
-              <Button 
-                onClick={() => router.push('/dashboards/buyer/messages')} 
-                className="w-full justify-start"
-                variant="outline"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Messages
-              </Button>
-              <Button 
-                onClick={() => router.push('/buy/onboard')} 
-                className="w-full justify-start"
-                variant="outline"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Start Buying Process
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            <div className="space-y-3">
-              {recentActivity.length > 0 ? (
-                recentActivity.map((activity: any) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-shrink-0">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Saved Properties */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="h-5 w-5" />
+                    Saved Properties
+                  </CardTitle>
+                  <CardDescription>Properties you've marked as favorites</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleViewAllSaved}>
+                  View All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {savedProperties.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Heart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2">No saved properties yet</p>
+                    <p className="text-sm text-gray-400">Start browsing properties and save your favorites!</p>
+                    <Button className="mt-4" onClick={() => router.push('/browse')}>
+                      Browse Properties
+                    </Button>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm">No recent activity</p>
-              )}
-            </div>
-          </Card>
-        </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savedProperties.slice(0, 4).map((property) => (
+                      <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <img 
+                          src={property.image} 
+                          alt={property.title}
+                          className="w-full h-32 object-cover rounded mb-3"
+                        />
+                        <h4 className="font-semibold text-sm mb-1">{property.title}</h4>
+                        <p className="text-lg font-bold text-blue-600 mb-1">${property.price.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 mb-2">{property.location}</p>
+                        <div className="flex items-center gap-3 text-xs text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <Bed className="h-3 w-3" />
+                            {property.bedrooms}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Bath className="h-3 w-3" />
+                            {property.bathrooms}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Square className="h-3 w-3" />
+                            {property.sqft}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Navigation Links */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Dashboard Navigation</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              onClick={() => router.push('/dashboards/buyer/notifications')} 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-center space-y-2"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h6v-2H4v2zM4 15h8v-2H4v2zM4 11h8V9H4v2z" />
-              </svg>
-              <span className="text-sm font-medium">Notifications</span>
-            </Button>
-            <Button 
-              onClick={() => router.push('/dashboards/buyer/messages')} 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-center space-y-2"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span className="text-sm font-medium">Messages</span>
-            </Button>
-            <Button 
-              onClick={() => router.push('/browse')} 
-              variant="outline" 
-              className="h-auto p-4 flex flex-col items-center space-y-2"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-              </svg>
-              <span className="text-sm font-medium">Browse Properties</span>
-            </Button>
+            {/* Recently Viewed */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    Recently Viewed
+                  </CardTitle>
+                  <CardDescription>Properties you've recently looked at</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleViewAllViewed}>
+                  View All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {viewedProperties.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Eye className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2">No viewed properties yet</p>
+                    <p className="text-sm text-gray-400">Start exploring properties to see your viewing history!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {viewedProperties.slice(0, 3).map((property) => (
+                      <div key={property.id} className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50">
+                        <img 
+                          src={property.image} 
+                          alt={property.title}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">{property.title}</h4>
+                          <p className="text-blue-600 font-bold">${property.price.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">{property.location}</p>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Viewed {property.viewCount} time{property.viewCount !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </Card>
-      </main>
 
+          {/* Right Column */}
+          <div className="space-y-8">
+            {/* Scheduled Viewings */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Scheduled Viewings
+                  </CardTitle>
+                  <CardDescription>Your upcoming property visits</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleViewAllViewings}>
+                  View All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {scheduledViewings.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm mb-1">No scheduled viewings</p>
+                    <p className="text-xs text-gray-400">Book a viewing when you find a property you like!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {scheduledViewings.slice(0, 3).map((viewing) => (
+                      <div key={viewing.id} className="border rounded-lg p-3">
+                        <h4 className="font-semibold text-sm mb-1">{viewing.property.title}</h4>
+                        <p className="text-xs text-gray-600 mb-2">{viewing.property.location}</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Clock className="h-3 w-3" />
+                            {viewing.scheduledDate} at {viewing.scheduledTime}
+                          </div>
+                          <Badge variant={viewing.status === 'scheduled' ? 'default' : 'secondary'}>
+                            {viewing.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Active Offers */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Active Offers
+                  </CardTitle>
+                  <CardDescription>Your pending property offers</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleViewAllOffers}>
+                  View All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {activeOffers.length === 0 ? (
+                  <div className="text-center py-6">
+                    <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm mb-1">No active offers</p>
+                    <p className="text-xs text-gray-400">Make an offer on a property you're interested in!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeOffers.slice(0, 3).map((offer) => (
+                      <div key={offer.id} className="border rounded-lg p-3">
+                        <h4 className="font-semibold text-sm mb-1">{offer.property.title}</h4>
+                        <p className="text-xs text-gray-600 mb-2">{offer.property.location}</p>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-green-600">${offer.offerAmount.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">Offer Amount</p>
+                          </div>
+                          <Badge variant={offer.status === 'pending' ? 'default' : 'secondary'}>
+                            {offer.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>Your latest actions and updates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentActivity.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Bell className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm mb-1">No recent activity</p>
+                    <p className="text-xs text-gray-400">Your activity will appear here as you use the platform!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentActivity.slice(0, 5).map((activity) => (
+                      <div key={activity.id} className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <p className="text-sm">{activity.message}</p>
+                          <p className="text-xs text-gray-500">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

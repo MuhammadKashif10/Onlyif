@@ -7,25 +7,37 @@ import Button from '@/components/reusable/Button';
 import InputField from '@/components/reusable/InputField';
 import TextArea from '@/components/reusable/TextArea';
 import { useRouter } from 'next/navigation';
+import { usePropertyContext } from '@/context/PropertyContext';
+import { useAuth } from '@/context/AuthContext';
+import { Property } from '@/types/api';
+import { toast } from 'react-hot-toast';
+import { propertiesApi } from '@/api/properties';
 
 interface PropertyFormData {
   title: string;
   price: string;
-  location: string;
+  location: string; // This will be the street address
   description: string;
   bedrooms: string;
   bathrooms: string;
-  squareMeters: string; // Changed from squareFeet
+  squareMeters: string;
   city: string;
   state: string;
   zipCode: string;
   propertyType: string;
   yearBuilt: string;
   lotSize: string;
+  // Add contact fields
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
 }
 
 export default function AddProperty() {
   const router = useRouter();
+  const { addProperty, refreshProperties } = usePropertyContext();
+  const { user } = useAuth();
+  
   const [formData, setFormData] = useState<PropertyFormData>({
     title: '',
     price: '',
@@ -33,19 +45,24 @@ export default function AddProperty() {
     description: '',
     bedrooms: '',
     bathrooms: '',
-    squareFeet: '',
+    squareMeters: '',
     city: '',
     state: '',
     zipCode: '',
     propertyType: 'Single Family',
     yearBuilt: '',
-    lotSize: ''
+    lotSize: '',
+    // Add missing contact fields
+    contactName: '',
+    contactEmail: '',
+    contactPhone: ''
   });
 
   const [propertyImages, setPropertyImages] = useState<File[]>([]);
   const [floorPlans, setFloorPlans] = useState<File[]>([]);
   const [videoTours, setVideoTours] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (field: keyof PropertyFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -85,70 +102,81 @@ export default function AddProperty() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    // Client-side validation
+    const requiredFields = ['title', 'price', 'location', 'city', 'state', 'zipCode', 'bedrooms', 'bathrooms', 'squareMeters', 'propertyType', 'contactName', 'contactEmail', 'contactPhone'];
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     try {
-      // Create FormData for file upload support
-      const submitFormData = new FormData();
+      setIsSubmitting(true);
       
-      // Add property data
-      submitFormData.append('title', formData.title);
-      submitFormData.append('address', formData.location);
-      submitFormData.append('city', formData.city);
-      submitFormData.append('state', formData.state);
-      submitFormData.append('zipCode', formData.zipCode);
-      submitFormData.append('price', formData.price);
-      submitFormData.append('beds', formData.bedrooms);
-      submitFormData.append('baths', formData.bathrooms);
-      submitFormData.append('squareMeters', formData.squareMeters);
-      submitFormData.append('description', formData.description);
-      submitFormData.append('propertyType', formData.propertyType);
-      submitFormData.append('yearBuilt', formData.yearBuilt);
-      submitFormData.append('lotSize', formData.lotSize);
+      // Structure data to match backend Property model
+      const propertyData = {
+        owner: user.id, // Use authenticated user's ID
+        title: formData.title,
+        address: {
+          street: formData.location,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: 'US'
+        },
+        location: {
+          coordinates: [0, 0] // You'll need to implement geocoding
+        },
+        price: parseFloat(formData.price),
+        beds: parseInt(formData.bedrooms),
+        baths: parseInt(formData.bathrooms),
+        squareMeters: parseFloat(formData.squareMeters),
+        propertyType: formData.propertyType.toLowerCase().replace(' ', '-'),
+        description: formData.description,
+        contactInfo: {
+          name: formData.contactName,
+          email: formData.contactEmail,
+          phone: formData.contactPhone
+        },
+        images: propertyImages.map((img, index) => ({
+          url: URL.createObjectURL(img),
+          caption: img.name || '',
+          isPrimary: index === 0,
+          order: index
+        })),
+        status: 'draft',
+        yearBuilt: formData.yearBuilt ? parseInt(formData.yearBuilt) : undefined,
+        lotSize: formData.lotSize ? parseFloat(formData.lotSize) : undefined
+      };
+
+      const response = await propertiesApi.createProperty(propertyData);
       
-      // Add required contact info (you may want to get these from user profile or form)
-      submitFormData.append('contactName', 'Property Owner'); // Replace with actual contact name
-      submitFormData.append('contactEmail', 'owner@example.com'); // Replace with actual email
-      submitFormData.append('contactPhone', '555-0123'); // Replace with actual phone
-      
-      // Add uploaded files
-      propertyImages.forEach((file, index) => {
-        submitFormData.append(`images_${index}`, file);
-      });
-      
-      floorPlans.forEach((file, index) => {
-        submitFormData.append(`floorplans_${index}`, file);
-      });
-      
-      videoTours.forEach((file, index) => {
-        submitFormData.append(`videos_${index}`, file);
-      });
-      
-      // Call the new /api/properties endpoint directly
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        body: submitFormData
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('Property created successfully:', result.data);
-        alert(`Property added successfully! ID: ${result.data.id}`);
+      if (response.success) {
+        toast.success('Property added successfully!');
         
         // Reset form
         setFormData({
           title: '',
           price: '',
           location: '',
-          description: '',
-          bedrooms: '',
-          bathrooms: '',
-          squareMeters: '', // Changed from squareFeet
           city: '',
           state: '',
           zipCode: '',
-          propertyType: 'Single Family',
+          bedrooms: '',
+          bathrooms: '',
+          squareMeters: '',
+          propertyType: 'single-family',
+          description: '',
+          contactName: '',
+          contactEmail: '',
+          contactPhone: '',
           yearBuilt: '',
           lotSize: ''
         });
@@ -159,12 +187,11 @@ export default function AddProperty() {
         // Redirect to seller dashboard
         router.push('/dashboards/seller');
       } else {
-        throw new Error(result.error || 'Failed to create property');
+        toast.error(response.error || 'Failed to add property');
       }
-      
-    } catch (error) {
-      console.error('Error creating property:', error);
-      alert('Failed to add property. Please try again.');
+    } catch (error: any) {
+      console.error('Error adding property:', error);
+      toast.error(error.message || 'An error occurred while adding the property');
     } finally {
       setIsSubmitting(false);
     }
@@ -331,6 +358,44 @@ export default function AddProperty() {
                       onChange={(e) => handleInputChange('lotSize', e.target.value)}
                       id="lotSize"
                       name="lotSize"
+                    />
+                  </div>
+                </section>
+
+                {/* Contact Information - ADD THIS SECTION */}
+                <section>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <InputField
+                      label="Contact Name"
+                      placeholder="Enter contact name"
+                      value={formData.contactName}
+                      onChange={(e) => handleInputChange('contactName', e.target.value)}
+                      required
+                      id="contactName"
+                      name="contactName"
+                    />
+                    
+                    <InputField
+                      label="Contact Email"
+                      type="email"
+                      placeholder="Enter contact email"
+                      value={formData.contactEmail}
+                      onChange={(e) => handleInputChange('contactEmail', e.target.value)}
+                      required
+                      id="contactEmail"
+                      name="contactEmail"
+                    />
+                    
+                    <InputField
+                      label="Contact Phone"
+                      type="tel"
+                      placeholder="Enter contact phone"
+                      value={formData.contactPhone}
+                      onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+                      required
+                      id="contactPhone"
+                      name="contactPhone"
                     />
                   </div>
                 </section>

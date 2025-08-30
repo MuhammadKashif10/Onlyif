@@ -168,7 +168,8 @@ export default function MapListingsLayout({
     loadProperties();
   };
 
-  if (loading && filteredProperties.length === 0) {
+  // Handle loading state
+  if (loading || contextLoading) {
     return (
       <div className={className}>
         <PropertyGridSkeleton count={itemsPerPage} />
@@ -176,6 +177,7 @@ export default function MapListingsLayout({
     );
   }
 
+  // Handle error state
   if (error) {
     return (
       <div className={className}>
@@ -336,9 +338,11 @@ export default function MapListingsLayout({
         </>
       ) : (
         <NoResults
-          message="No properties found"
+          message={allProperties.length === 0 ? "No properties available yet" : "No properties found"}
           suggestion={
-            searchQuery || Object.keys(filters).length > 0
+            allProperties.length === 0
+              ? "New properties will appear here as sellers add them. Check back soon!"
+              : searchQuery || Object.keys(filters).length > 0
               ? 'Try adjusting your search criteria or filters.'
               : 'Check back later for new listings.'
           }
