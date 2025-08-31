@@ -1,18 +1,27 @@
-// Utility to conditionally use mock data based on environment variable
-export const USE_MOCKS = process.env.USE_MOCKS === 'true';
+// Single source of truth for mock configuration
+export const USE_MOCKS = false;
 
-// Helper function to conditionally return mock data or make real API calls
-export function withMockFallback<T>(
-  mockData: () => Promise<T>,
-  realApiCall: () => Promise<T>
-): Promise<T> {
-  return USE_MOCKS ? mockData() : realApiCall();
+// Database-only wrapper functions
+export async function withDatabaseOnly<T>(apiCall: () => Promise<T>): Promise<T> {
+  console.log('🔄 Making database-only API call');
+  try {
+    const result = await apiCall();
+    console.log('✅ Database API call successful');
+    return result;
+  } catch (error) {
+    console.error('❌ Database API call failed:', error);
+    throw error;
+  }
 }
 
-// Helper for synchronous mock data
-export function withMockFallbackSync<T>(
-  mockData: () => T,
-  realApiCall: () => Promise<T>
-): Promise<T> {
-  return USE_MOCKS ? Promise.resolve(mockData()) : realApiCall();
+export function withDatabaseOnlySync<T>(apiCall: () => T): T {
+  console.log('🔄 Making synchronous database-only call');
+  try {
+    const result = apiCall();
+    console.log('✅ Synchronous database call successful');
+    return result;
+  } catch (error) {
+    console.error('❌ Synchronous database call failed:', error);
+    throw error;
+  }
 }

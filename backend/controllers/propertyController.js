@@ -35,7 +35,7 @@ const createProperty = async (req, res) => {
 const getPropertyById = async (req, res) => {
   const property = await Property.findById(req.params.id)
     .populate('owner', 'name email avatar')
-    .populate('assignedAgent', 'name email avatar');
+    .populate('agents.agent', 'name email avatar');
 
   if (!property) {
     return res.status(404).json(
@@ -43,13 +43,15 @@ const getPropertyById = async (req, res) => {
     );
   }
 
-  // Apply visibility logic
+  // Apply visibility logic - Updated to work with agents array
   const canView = (
     property.status === 'public' ||
     (req.user && (
       req.user.id === property.owner._id.toString() ||
       req.user.role === 'admin' ||
-      (property.assignedAgent && req.user.id === property.assignedAgent._id.toString())
+      (property.agents && property.agents.some(agentObj => 
+        agentObj.agent && req.user.id === agentObj.agent._id.toString()
+      ))
     ))
   );
 
@@ -59,8 +61,25 @@ const getPropertyById = async (req, res) => {
     );
   }
 
+  // Transform property to include frontend-compatible coordinates
+  const propertyObj = property.toObject();
+  
+  if (propertyObj.location && propertyObj.location.coordinates && propertyObj.location.coordinates.length === 2) {
+    propertyObj.coordinates = {
+      lng: propertyObj.location.coordinates[0],
+      lat: propertyObj.location.coordinates[1]
+    };
+  } else {
+    propertyObj.coordinates = {
+      lng: -97.7431,
+      lat: 30.2672
+    };
+  }
+  
+  delete propertyObj.location;
+
   res.json(
-    successResponse(property, 'Property retrieved successfully')
+    successResponse(propertyObj, 'Property retrieved successfully')
   );
 };
 
@@ -227,8 +246,8 @@ const getAllProperties = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // Build filter object
-  const filter = { status: 'public' };
+  // Build filter object - Updated to include both pending and public properties
+  const filter = { status: { $in: ['pending', 'public'] } };
   
   if (req.query.city) filter.city = new RegExp(req.query.city, 'i');
   if (req.query.state) filter.state = new RegExp(req.query.state, 'i');
@@ -245,14 +264,38 @@ const getAllProperties = async (req, res) => {
   const total = await Property.countDocuments(filter);
   const properties = await Property.find(filter)
     .populate('owner', 'name email')
-    .populate('assignedAgent', 'name email')
+    .populate('agents.agent', 'name email')
     .sort({ featured: -1, dateListed: -1 })
     .skip(skip)
     .limit(limit);
 
+  // Transform properties to include frontend-compatible coordinates
+  const transformedProperties = properties.map(property => {
+    const propertyObj = property.toObject();
+    
+    // Transform GeoJSON coordinates to frontend format
+    if (propertyObj.location && propertyObj.location.coordinates && propertyObj.location.coordinates.length === 2) {
+      propertyObj.coordinates = {
+        lng: propertyObj.location.coordinates[0], // GeoJSON uses [longitude, latitude]
+        lat: propertyObj.location.coordinates[1]
+      };
+    } else {
+      // Provide fallback coordinates if missing
+      propertyObj.coordinates = {
+        lng: -97.7431, // Austin default
+        lat: 30.2672
+      };
+    }
+    
+    // Remove the location field to avoid confusion
+    delete propertyObj.location;
+    
+    return propertyObj;
+  });
+
   res.json(
     successResponse(
-      properties,
+      transformedProperties,
       'Properties retrieved successfully',
       200,
       paginationMeta(page, limit, total)

@@ -6,8 +6,18 @@ import { useApiIntegration } from '@/hooks/useApiIntegration';
 import { usePropertyContext } from '@/context/PropertyContext';
 
 export default function BrowsePageClient() {
-  const { properties } = usePropertyContext();
+  const { state } = usePropertyContext();
+  const { properties, loading, error, pagination } = state;
   useApiIntegration(); // Connect API to global state
+  
+  // Add console logging to trace data flow
+  console.log('🏠 BrowsePageClient - Properties state:', {
+    propertiesCount: properties?.length || 0,
+    loading,
+    error,
+    pagination,
+    properties: properties?.slice(0, 2) // Log first 2 properties for debugging
+  });
   
   // Fix: Ensure properties is always an array before using array methods
   const safeProperties = Array.isArray(properties) ? properties : [];
@@ -18,6 +28,70 @@ export default function BrowsePageClient() {
     totalValue: safeProperties.reduce((sum, p) => sum + p.price, 0),
     featuredCount: safeProperties.filter(p => p.featured).length
   };
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar
+          logo="/logo.svg"
+          logoText=""
+          navigationItems={[
+            { label: 'Buy', href: '/browse', isActive: true },
+            { label: 'Sell', href: '/sell', isActive: false },
+            { label: 'How It Works', href: '/how-it-works', isActive: false },
+            { label: 'About', href: '/about', isActive: false },
+          ]}
+          ctaText="Get Started"
+          ctaHref="/signin"
+        />
+        <div className="text-center py-12">
+          <div className="text-red-600 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to Load Properties</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state
+  if (!loading && properties.length === 0) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navbar
+          logo="/logo.svg"
+          logoText=""
+          navigationItems={[
+            { label: 'Buy', href: '/browse', isActive: true },
+            { label: 'Sell', href: '/sell', isActive: false },
+            { label: 'How It Works', href: '/how-it-works', isActive: false },
+            { label: 'About', href: '/about', isActive: false },
+          ]}
+          ctaText="Get Started"
+          ctaHref="/signin"
+        />
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Properties Found</h3>
+          <p className="text-gray-600">No properties are currently available in the database.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

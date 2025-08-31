@@ -19,8 +19,31 @@ class ApiClient {
     return this.defaultHeaders;
   }
 
+  // Retry logic with exponential backoff for 429 errors
+  private async retryRequest<T>(endpoint: string, options: RequestInit, maxRetries: number = 3): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.makeRequest<T>(endpoint, options);
+      } catch (error: any) {
+        if (error.status === 429 && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+          console.log(`Rate limited. Retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   // Standardized request method with error handling
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return this.retryRequest<T>(endpoint, options);
+  }
+
+  // Actual request implementation (renamed from request)
+  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
       const headers = {
         ...this.defaultHeaders,

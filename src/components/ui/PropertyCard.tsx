@@ -13,10 +13,10 @@ interface PropertyCardProps {
   id: string;
   title: string;
   address: string;
-  price: number;
-  beds: number;
-  baths: number;
-  size: number; // This will now be in square meters
+  price: number | null | undefined;
+  beds: number | null | undefined;
+  baths: number | null | undefined;
+  size: number | null | undefined; // This will now be in square meters
   image: string;
   status?: PropertyStatus;
   featured?: boolean;
@@ -38,9 +38,28 @@ export default function PropertyCard({
   className = '',
   onClick
 }: PropertyCardProps) {
-  // Format size function
-  const formatSize = (size: number) => {
+  // Format size function with null check
+  const formatSize = (size: number | undefined | null) => {
+    if (size == null || isNaN(size)) {
+      return 'N/A';
+    }
     return `${size.toLocaleString()} m²`;
+  };
+
+  // Safe price formatting
+  const formatSafePrice = (price: number | undefined | null) => {
+    if (price == null || isNaN(price)) {
+      return 'Price on request';
+    }
+    return formatCurrencyCompact(price);
+  };
+
+  // Safe number formatting for beds/baths
+  const formatSafeNumber = (num: number | undefined | null) => {
+    if (num == null || isNaN(num)) {
+      return 0;
+    }
+    return num;
   };
 
   // Handle click function
@@ -81,8 +100,8 @@ export default function PropertyCard({
 
         {/* Price Badge */}
         <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold bg-white text-gray-900 shadow-sm" aria-label={`Price: ${formatCurrencyCompact(price)}`}>
-            {formatCurrencyCompact(price)}
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-semibold bg-white text-gray-900 shadow-sm" aria-label={`Price: ${formatSafePrice(price)}`}>
+            {formatSafePrice(price)}
           </span>
         </div>
 
@@ -106,17 +125,17 @@ export default function PropertyCard({
         {/* Property Details */}
         <div className="flex items-center justify-between text-sm text-gray-600 mb-3" role="group" aria-label="Property details">
           <div className="flex items-center space-x-4">
-            <span className="flex items-center" aria-label={`${beds} bedrooms`}>
+            <span className="flex items-center" aria-label={`${formatSafeNumber(beds)} bedrooms`}>
               <svg className="w-4 h-4 mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{beds} beds</span>
+              <span>{formatSafeNumber(beds)} beds</span>
             </span>
-            <span className="flex items-center" aria-label={`${baths} bathrooms`}>
+            <span className="flex items-center" aria-label={`${formatSafeNumber(baths)} bathrooms`}>
               <svg className="w-4 h-4 mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>{baths} baths</span>
+              <span>{formatSafeNumber(baths)} baths</span>
             </span>
           </div>
           <span className="text-gray-500" aria-label={`${formatSize(size)}`}>
@@ -144,7 +163,7 @@ export default function PropertyCard({
         <button 
           onClick={handleClick} 
           className="text-left w-full focus:outline-none"
-          aria-label={`Select ${title} at ${address} - ${formatCurrencyCompact(price)}`}
+          aria-label={`Select ${title || 'Property'} at ${address || 'Unknown location'} - ${formatSafePrice(price)}`}
         >
           {CardContent}
         </button>
@@ -157,7 +176,7 @@ export default function PropertyCard({
       <Link
         href={`/property/${id}`}
         className="block focus:outline-none"
-        aria-label={`View details for ${title} at ${address} - ${formatCurrencyCompact(price)}`}
+        aria-label={`View details for ${title || 'Property'} at ${address || 'Unknown location'} - ${formatSafePrice(price)}`}
       >
         {CardContent}
       </Link>

@@ -3,7 +3,13 @@
 export interface Property {
   id: string;
   title: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  } | string; // Support both object and string formats
   city: string;
   state: string;
   zipCode: string;
@@ -19,7 +25,7 @@ export interface Property {
   features: string[];
   images: string[];
   mainImage: string;
-  coordinates: {
+  coordinates?: { // Made optional to handle missing coordinates
     lat: number;
     lng: number;
   };

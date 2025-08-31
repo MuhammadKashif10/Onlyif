@@ -21,11 +21,19 @@ export default function PropertyMap({
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 30.2672, lng: -97.7431 }); // Default to Austin
 
-  // Calculate map center based on properties
+  // Calculate map center based on properties with valid coordinates
   useEffect(() => {
-    if (properties.length > 0) {
-      const avgLat = properties.reduce((sum, p) => sum + p.coordinates.lat, 0) / properties.length;
-      const avgLng = properties.reduce((sum, p) => sum + p.coordinates.lng, 0) / properties.length;
+    const propertiesWithCoords = properties.filter(p => 
+      p.coordinates && 
+      typeof p.coordinates.lat === 'number' && 
+      typeof p.coordinates.lng === 'number' &&
+      !isNaN(p.coordinates.lat) && 
+      !isNaN(p.coordinates.lng)
+    );
+    
+    if (propertiesWithCoords.length > 0) {
+      const avgLat = propertiesWithCoords.reduce((sum, p) => sum + p.coordinates.lat, 0) / propertiesWithCoords.length;
+      const avgLng = propertiesWithCoords.reduce((sum, p) => sum + p.coordinates.lng, 0) / propertiesWithCoords.length;
       setMapCenter({ lat: avgLat, lng: avgLng });
     }
   }, [properties]);
@@ -39,7 +47,8 @@ export default function PropertyMap({
     onPropertyHover?.(property);
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | null | undefined) => {
+    if (!price || isNaN(price)) return 'Price on request';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -47,6 +56,20 @@ export default function PropertyMap({
       maximumFractionDigits: 0,
     }).format(price);
   };
+
+  const formatSize = (size: number | null | undefined) => {
+    if (!size || isNaN(size)) return 'N/A';
+    return size.toLocaleString();
+  };
+
+  // Filter properties that have valid coordinates
+  const validProperties = properties.filter(property => 
+    property.coordinates && 
+    typeof property.coordinates.lat === 'number' && 
+    typeof property.coordinates.lng === 'number' &&
+    !isNaN(property.coordinates.lat) && 
+    !isNaN(property.coordinates.lng)
+  );
 
   return (
     <div className={`bg-gray-100 rounded-lg overflow-hidden h-full ${className}`}>
@@ -63,8 +86,8 @@ export default function PropertyMap({
           }}></div>
         </div>
 
-        {/* Property markers */}
-        {properties.map((property, index) => {
+        {/* Property markers - only render properties with valid coordinates */}
+        {validProperties.map((property, index) => {
           const isSelected = selectedPropertyId === property.id;
           const isHovered = hoveredPropertyId === property.id;
           
@@ -110,13 +133,14 @@ export default function PropertyMap({
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-10">
                   <div className="bg-white rounded-lg shadow-xl p-3 min-w-48 border">
                     <div className="text-sm font-semibold text-gray-900 truncate">
-                      {property.title}
+                      {property.title || 'Untitled Property'}
                     </div>
                     <div className="text-xs text-gray-600 truncate">
-                      {property.address}
+                      {typeof property.address === 'string' ? property.address : 
+                       property.address ? `${property.address.street}, ${property.address.city}, ${property.address.state}` : 'Address not available'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {property.beds} bed • {property.baths} bath • {property.size.toLocaleString()} sqft
+                      {property.beds || 0} bed • {property.baths || 0} bath • {formatSize(property.size)} sqft
                     </div>
                   </div>
                   {/* Arrow */}
@@ -161,7 +185,12 @@ export default function PropertyMap({
         <div className="absolute bottom-4 left-4">
           <div className="bg-white rounded-lg shadow-md px-3 py-2">
             <div className="text-sm font-semibold text-gray-900">
-              {properties.length} {properties.length === 1 ? 'home' : 'homes'}
+              {validProperties.length} {validProperties.length === 1 ? 'home' : 'homes'}
+              {properties.length > validProperties.length && (
+                <div className="text-xs text-gray-500">
+                  ({properties.length - validProperties.length} without coordinates)
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import { propertiesApi } from '../api/properties';
 import { Property, PropertySearchParams, PaginatedPropertiesResponse } from '../types/api';
 import { useAuth } from './AuthContext';
@@ -153,57 +153,46 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(propertyReducer, initialState);
   const { user } = useAuth();
 
-  // Load properties with filters and pagination
-  const loadProperties = async (params: PropertySearchParams = {}) => {
+  // Load properties with filters and pagination - wrapped with useCallback to prevent infinite loops
+  const loadProperties = useCallback(async (params: PropertySearchParams = {}) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'SET_ERROR', payload: null });
-      
+      console.log('🔄 Loading properties from database...', params);
       const response = await propertiesApi.getProperties(params);
+      console.log('📦 Properties loaded:', response);
       
-      // Extra validation to ensure response structure
-      if (!response || typeof response !== 'object') {
-        throw new Error('Invalid response structure');
+      if (response && Array.isArray(response.properties)) {
+        dispatch({ 
+          type: 'SET_PROPERTIES', 
+          payload: { 
+            properties: response.properties,
+            pagination: {
+              currentPage: response.page || 1,
+              totalPages: response.totalPages || 1,
+              totalItems: response.total || 0,
+              hasNext: (response.page || 1) < (response.totalPages || 1),
+              hasPrev: (response.page || 1) > 1
+            }
+          }
+        });
+      } else {
+        console.warn('⚠️ Invalid response format:', response);
+        dispatch({ type: 'SET_PROPERTIES', payload: { properties: [], pagination: initialState.pagination } });
+        dispatch({ type: 'SET_ERROR', payload: 'Invalid data format received from server' });
       }
-      
-      // Ensure properties is always an array
-      const properties = Array.isArray(response.properties) ? response.properties : [];
-      
-      dispatch({
-        type: 'SET_PROPERTIES',
-        payload: {
-          properties,
-          pagination: {
-            currentPage: response.page || 1,
-            totalPages: response.totalPages || 1,
-            totalItems: response.total || 0,
-            hasNext: (response.page || 1) < (response.totalPages || 1),
-            hasPrev: (response.page || 1) > 1
-          }
-        }
-      });
     } catch (error) {
-      console.error('Error loading properties:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to load properties' 
-      });
-      // Set safe fallback values
-      dispatch({
-        type: 'SET_PROPERTIES',
-        payload: {
-          properties: [],
-          pagination: {
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: 0,
-            hasNext: false,
-            hasPrev: false
-          }
-        }
-      });
+      console.error('❌ Error loading properties:', error);
+      dispatch({ type: 'SET_PROPERTIES', payload: { properties: [], pagination: initialState.pagination } });
+      
+      // Set appropriate error message
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load properties from database';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, []); // Empty dependency array since this function doesn't depend on any props or state
 
   // Load featured properties
   const loadFeaturedProperties = async (limit: number = 6) => {

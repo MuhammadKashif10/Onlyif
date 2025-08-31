@@ -11,6 +11,7 @@ import { PropertyGridSkeleton } from '../ui/LoadingSkeleton';
 import { LoadingError, NoResults } from '../ui/ErrorMessage';
 import { getSafeImageUrl } from '@/utils/imageUtils';
 import { FilterOptions } from '@/api';
+import { formatPropertyAddress } from '@/utils/addressUtils';
 
 interface MapListingsLayoutProps {
   showFilters?: boolean;
@@ -33,6 +34,14 @@ export default function MapListingsLayout({
   const { state, loadProperties } = usePropertyContext();
   const { properties: allProperties, loading: contextLoading, error: contextError } = state;
   
+  // Add console logging to trace data flow
+  console.log('🗺️ MapListingsLayout - Properties state:', {
+    allPropertiesCount: allProperties?.length || 0,
+    contextLoading,
+    contextError,
+    allProperties: allProperties?.slice(0, 2) // Log first 2 properties for debugging
+  });
+  
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,11 +54,24 @@ export default function MapListingsLayout({
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(true);
 
+  // Add missing useEffect to load properties on mount
+  useEffect(() => {
+    console.log('🚀 MapListingsLayout - Loading properties on mount...');
+    loadProperties();
+  }, [loadProperties]);
+
   // Filter and paginate properties (same logic as PropertyGrid)
   useEffect(() => {
     try {
       setLoading(true);
       setError(null);
+
+      console.log('🔄 MapListingsLayout - Filtering properties:', {
+        allPropertiesLength: allProperties?.length || 0,
+        featuredOnly,
+        searchQuery,
+        filters
+      });
 
       // Ensure allProperties is an array
       let properties = Array.isArray(allProperties) ? [...allProperties] : [];
@@ -293,32 +315,57 @@ export default function MapListingsLayout({
                   ? 'grid-cols-1' 
                   : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
               }`}>
-                {filteredProperties.map((property) => (
-                  <div
-                    key={property.id}
-                    onMouseEnter={() => handlePropertyCardHover(property)}
-                    onMouseLeave={() => handlePropertyCardHover(null)}
-                    className={`transition-all duration-200 ${
-                      hoveredPropertyId === property.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-                    }`}
-                  >
-                    <PropertyCard
-                      id={property.id}
-                      title={property.title}
-                      address={property.address}
-                      price={property.price}
-                      beds={property.beds}
-                      baths={property.baths}
-                      size={property.size}
-                      image={getSafeImageUrl(
-                        property.mainImage || property.images?.[0],
-                        property.propertyType
-                      )}
-                      featured={property.featured}
-                      onClick={() => handlePropertySelect(property)}
-                    />
-                  </div>
-                ))}
+                {filteredProperties.map((property) => {
+                  // Ensure property is a valid object with required fields
+                  if (!property || typeof property !== 'object' || !property.id) {
+                    console.warn('Invalid property object:', property);
+                    return null;
+                  }
+                  
+                  // Format address object into string
+                  const formatAddress = (address: any) => {
+                    if (typeof address === 'string') {
+                      return address;
+                    }
+                    if (address && typeof address === 'object') {
+                      const parts = [];
+                      if (address.street) parts.push(address.street);
+                      if (address.city) parts.push(address.city);
+                      if (address.state) parts.push(address.state);
+                      if (address.zipCode) parts.push(address.zipCode);
+                      return parts.join(', ') || 'Address not available';
+                    }
+                    return 'Address not available';
+                  };
+                  
+                  return (
+                    <div
+                      key={property.id}
+                      onMouseEnter={() => handlePropertyCardHover(property)}
+                      onMouseLeave={() => handlePropertyCardHover(null)}
+                      className={`transition-all duration-200 ${
+                        hoveredPropertyId === property.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                      }`}
+                    >
+                      <PropertyCard
+                        id={property.id || ''}
+                        title={property.title || 'Untitled Property'}
+                        address={formatPropertyAddress(property.address)}
+                        price={typeof property.price === 'number' ? property.price : 0}
+                        beds={typeof property.beds === 'number' ? property.beds : 0}
+                        baths={typeof property.baths === 'number' ? property.baths : 0}
+                        size={typeof property.size === 'number' ? property.size : 0}
+                        image={getSafeImageUrl(
+                          property.mainImage || property.images?.[0],
+                          property.propertyType
+                        )}
+                        status={property.status}
+                        featured={Boolean(property.featured)}
+                        onClick={() => handlePropertySelect(property)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Pagination */}
