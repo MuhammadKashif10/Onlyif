@@ -47,12 +47,12 @@ export default function PropertyCard({
   };
 
   // Safe price formatting
-  const formatSafePrice = (price: number | undefined | null) => {
-    if (price == null || isNaN(price)) {
-      return 'Price on request';
+  function formatSafePrice(price: number | null): string {
+    if (price === null || price === undefined || isNaN(price)) {
+      return 'Price on Request';
     }
     return formatCurrencyCompact(price);
-  };
+  }
 
   // Safe number formatting for beds/baths
   const formatSafeNumber = (num: number | undefined | null) => {
@@ -118,30 +118,37 @@ export default function PropertyCard({
 
         {/* Address */}
         <p className="text-sm text-gray-600 mb-3 line-clamp-1">
-          <span className="sr-only">Location: </span>
           {address}
         </p>
 
-        {/* Property Details */}
-        <div className="flex items-center justify-between text-sm text-gray-600 mb-3" role="group" aria-label="Property details">
-          <div className="flex items-center space-x-4">
-            <span className="flex items-center" aria-label={`${formatSafeNumber(beds)} bedrooms`}>
-              <svg className="w-4 h-4 mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{formatSafeNumber(beds)} beds</span>
-            </span>
-            <span className="flex items-center" aria-label={`${formatSafeNumber(baths)} bathrooms`}>
-              <svg className="w-4 h-4 mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{formatSafeNumber(baths)} baths</span>
+        {/* Price and Property Details */}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-lg font-semibold text-gray-900">
+            {formatSafePrice(price)}
+          </span>
+          <div className="flex gap-4 text-sm text-gray-600">
+            {formatSafeNumber(beds) && (
+              <span className="flex items-center gap-1">
+                <span>{formatSafeNumber(beds)} Beds</span>
+              </span>
+            )}
+            {formatSafeNumber(baths) && (
+              <span className="flex items-center gap-1">
+                <span>{formatSafeNumber(baths)} Baths</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Size */}
+        {formatSize(size) && (
+          <div className="mt-2">
+            <span className="text-sm text-gray-600">
+              {formatSize(size)}
             </span>
           </div>
-          <span className="text-gray-500" aria-label={`${formatSize(size)}`}>
-            {formatSize(size)}
-          </span>
-        </div>
+        )}
+      </div>
 
         {/* View Details Button */}
         <div className="flex items-center justify-between">
@@ -152,7 +159,7 @@ export default function PropertyCard({
             </svg>
           </span>
         </div>
-      </div>
+      
     </>
   );
 

@@ -347,21 +347,42 @@ export default function MapListingsLayout({
                         hoveredPropertyId === property.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
                       }`}
                     >
+                      {/* Debug logging for property data */}
+                      {console.log('🏠 Property data:', {
+                        id: property.id,
+                        title: property.title,
+                        price: property.price,
+                        beds: property.beds,
+                        baths: property.baths,
+                        size: property.size,
+                        squareMeters: property.squareMeters,
+                        images: property.images,
+                        mainImage: property.mainImage
+                      })}
+                      {/* Additional debug for image processing */}
+                      {console.log('🖼️ Image processing:', {
+                        mainImage: property.mainImage,
+                        firstImage: property.images?.[0],
+                        imagesArray: property.images,
+                        finalImageUrl: property.mainImage || property.images?.[0]
+                      })}
                       <PropertyCard
                         id={property.id || ''}
                         title={property.title || 'Untitled Property'}
                         address={formatPropertyAddress(property.address)}
-                        price={typeof property.price === 'number' ? property.price : 0}
-                        beds={typeof property.beds === 'number' ? property.beds : 0}
-                        baths={typeof property.baths === 'number' ? property.baths : 0}
-                        size={typeof property.size === 'number' ? property.size : 0}
-                        image={getSafeImageUrl(
-                          property.mainImage || property.images?.[0],
-                          property.propertyType
-                        )}
-                        status={property.status}
-                        featured={Boolean(property.featured)}
-                        onClick={() => handlePropertySelect(property)}
+                        price={property.price || null}
+                        beds={property.beds || null}
+                        baths={property.baths || null}
+                        size={property.squareMeters || property.size || null}
+                        image={
+                          property.mainImage?.url ||
+                          property.images?.find(img => img.isPrimary)?.url ||
+                          property.images?.[0]?.url ||
+                          ''
+                        }
+                        featured={property.featured || false}
+                        onSelect={() => handlePropertySelect(property)}
+                        isSelected={selectedPropertyId === property.id}
                       />
                     </div>
                   );

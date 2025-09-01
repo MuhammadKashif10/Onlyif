@@ -29,9 +29,9 @@ export function formatCurrency(
     showSymbol = true
   } = options;
 
-  const formatter = new Intl.NumberFormat(CURRENCY_CONFIG.locale, {
+  const formatter = new Intl.NumberFormat('en-AU', {
     style: 'currency',
-    currency: CURRENCY_CONFIG.currency,
+    currency: 'AUD',
     minimumFractionDigits,
     maximumFractionDigits,
   });
@@ -45,10 +45,18 @@ export function formatCurrency(
  * @returns Formatted currency string (e.g., "A$1,500")
  */
 export function formatCurrencyCompact(amount: number): string {
-  return formatCurrency(amount, {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return 'Price on Request';
+  }
+  
+  const formatter = new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   });
+  
+  return formatter.format(amount);
 }
 
 /**

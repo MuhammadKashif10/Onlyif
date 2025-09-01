@@ -1,3 +1,6 @@
+// Add this at the very top of the file, before any other requires
+require('dotenv').config();
+
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Property = require('../models/Property');
@@ -102,44 +105,98 @@ const seedData = async () => {
       {
         owner: seller._id,
         title: 'Beautiful Family Home in Downtown',
-        address: '123 Main Street',
-        city: 'Austin',
-        state: 'TX',
-        zipCode: '78701',
+        address: {
+          street: '123 Main Street',
+          city: 'Austin',
+          state: 'TX',
+          zipCode: '78701',
+          country: 'US'
+        },
+        location: {
+          type: 'Point',
+          coordinates: [-97.7431, 30.2672] // Austin coordinates
+        },
+        propertyType: 'single-family',
         price: 450000,
         beds: 3,
         baths: 2,
-        size: 1800,
+        squareMeters: 167, // ~1800 sq ft converted
         description: 'Stunning 3-bedroom home with modern amenities and great location.',
         images: [
-          '/images/01.jpg',
-          '/images/02.jpg',
-          '/images/03.jpg'
+          {
+            url: '/images/01.jpg',
+            caption: 'Front exterior view',
+            isPrimary: true,
+            order: 1
+          },
+          {
+            url: '/images/02.jpg',
+            caption: 'Living room',
+            isPrimary: false,
+            order: 2
+          },
+          {
+            url: '/images/03.jpg',
+            caption: 'Kitchen',
+            isPrimary: false,
+            order: 3
+          }
         ],
         status: 'active',
-        visibility: 'public',
-        assignedAgent: createdAgents[0]._id
+        contactInfo: {
+          name: 'Sarah Johnson',
+          email: 'sarah.johnson@onlyif.com',
+          phone: '(555) 123-4567'
+        },
+        featured: true
       },
       {
         owner: seller._id,
         title: 'Modern Condo with City Views',
-        address: '456 Oak Avenue',
-        city: 'Dallas',
-        state: 'TX',
-        zipCode: '75201',
+        address: {
+          street: '456 Oak Avenue',
+          city: 'Dallas',
+          state: 'TX',
+          zipCode: '75201',
+          country: 'US'
+        },
+        location: {
+          type: 'Point',
+          coordinates: [-96.7970, 32.7767] // Dallas coordinates
+        },
+        propertyType: 'condo',
         price: 320000,
         beds: 2,
         baths: 2,
-        size: 1200,
+        squareMeters: 111, // ~1200 sq ft converted
         description: 'Luxury condo with panoramic city views and premium finishes.',
         images: [
-          '/images/04.jpg',
-          '/images/05.jpg',
-          '/images/06.jpg'
+          {
+            url: '/images/04.jpg',
+            caption: 'City view from balcony',
+            isPrimary: true,
+            order: 1
+          },
+          {
+            url: '/images/05.jpg',
+            caption: 'Modern living space',
+            isPrimary: false,
+            order: 2
+          },
+          {
+            url: '/images/06.jpg',
+            caption: 'Master bedroom',
+            isPrimary: false,
+            order: 3
+          }
         ],
         status: 'active',
-        visibility: 'public',
-        assignedAgent: createdAgents[1]._id
+        contactInfo: {
+          name: 'Mike Davis',
+          email: 'mike.davis@onlyif.com',
+          phone: '(555) 987-6543'
+        },
+        featured: false
       }
     ];
 
