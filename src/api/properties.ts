@@ -70,16 +70,38 @@ export const propertiesApi = {
     }
   },
 
-  async getPropertyById(id: string): Promise<Property> {
-    console.log('🔄 API: Getting property by ID from database', { id });
-    
+  // Add new function to fetch property by ID
+  async getPropertyById(id: string): Promise<ApiResponse<Property>> {
     try {
-      const response = await apiClient.get<BackendResponse<Property>>(`/properties/${id}`);
-      console.log('✅ API: Property fetched successfully', response.data);
-      return response.data;
+      console.log('🔍 Fetching property by ID:', id);
+      
+      const response = await fetch(`${this.baseUrl}/properties/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeaders()
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Property fetched successfully:', data);
+      
+      return {
+        success: true,
+        data: data.data || data,
+        message: 'Property fetched successfully'
+      };
     } catch (error) {
-      console.error('❌ API: Error fetching property by ID', error);
-      throw error;
+      console.error('❌ Error fetching property by ID:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch property'
+      };
     }
   },
 
@@ -130,24 +152,67 @@ export const propertiesApi = {
   },
 
   async getFilterOptions(): Promise<FilterOptionsData> {
-    console.log('🔄 API: Getting filter options from database');
-    
     try {
-      const response = await apiClient.get<BackendResponse<FilterOptionsData>>('/properties/filters');
-      console.log('✅ API: Filter options fetched successfully', response.data);
-      return response.data;
+      const response = await apiClient.get('/properties/filter-options');
+      return response.data.data;
     } catch (error) {
-      console.error('❌ API: Error fetching filter options', error);
+      console.error('Error fetching filter options:', error);
+      // Return default structure on error
       return {
         propertyTypes: [],
-        priceRanges: [],
-        bedrooms: [],
-        bathrooms: [],
         cities: [],
-        states: []
+        priceRange: { min: 0, max: 1000000 },
+        sizeRange: { min: 0, max: 10000 }
       };
     }
-  }
+  },
+
+  // Add missing getFavoriteProperties function
+  async getFavoriteProperties(userId?: string): Promise<Property[]> {
+    try {
+      const endpoint = userId ? `/properties/favorites/${userId}` : '/properties/favorites';
+      const response = await apiClient.get(endpoint);
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching favorite properties:', error);
+      // Return empty array instead of throwing to prevent crashes
+      return [];
+    }
+  },
+  
+  async createPropertyWithFiles(formData: FormData): Promise<{success: boolean, data?: Property, error?: string}> {
+    console.log('🔄 API: Creating property with files');
+    
+    try {
+      // Get JWT token from localStorage
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/properties/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+        // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      console.error('❌ API: Error creating property with files:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to create property'
+      };
+    }
+  },
 };
 export default propertiesApi;
 export const submitProperty = propertiesApi.submitProperty;

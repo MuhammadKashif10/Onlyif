@@ -207,7 +207,137 @@ const getSellerListings = async (req, res) => {
   }
 };
 
+// @desc    Get detailed seller analytics with chart data
+// @route   GET /api/sellers/:id/analytics
+// @access  Private (Seller only)
+const getSellerAnalytics = async (req, res) => {
+  try {
+    const sellerId = req.params.id;
+    const timeRange = req.query.timeRange || '6months';
+    
+    // Verify the seller can only access their own data
+    if (req.user.role !== 'seller' || req.user.id !== sellerId) {
+      return res.status(403).json(
+        errorResponse('Access denied. You can only view your own analytics.', 403)
+      );
+    }
+
+    // Calculate date range based on timeRange parameter
+    const now = new Date();
+    let startDate;
+    
+    switch (timeRange) {
+      case '1month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        break;
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        break;
+      case '1year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+        break;
+      default: // 6months
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    }
+
+    // Get seller's properties
+    const properties = await Property.find({ 
+      owner: sellerId, 
+      isDeleted: false,
+      dateListed: { $gte: startDate }
+    }).select('_id title price status dateListed viewCount');
+
+    const propertyIds = properties.map(p => p._id);
+
+    // Get cash offers for the time period
+    const offers = await CashOffer.find({
+      property: { $in: propertyIds },
+      isDeleted: false,
+      createdAt: { $gte: startDate }
+    }).select('status offerAmount property createdAt');
+
+    // Calculate basic analytics
+    const totalViews = properties.reduce((sum, p) => sum + (p.viewCount || 0), 0);
+    const totalInquiries = offers.length;
+    const totalOffers = offers.filter(offer => 
+      ['offer_made', 'negotiating', 'accepted', 'closed'].includes(offer.status)
+    ).length;
+    
+    const averageViewsPerListing = properties.length > 0 ? Math.round(totalViews / properties.length) : 0;
+    const conversionRate = totalViews > 0 ? ((totalOffers / totalViews) * 100).toFixed(1) : 0;
+
+    // Find top performing listing
+    const topPerformingListing = properties.reduce((top, current) => {
+      if (!top || (current.viewCount || 0) > (top.viewCount || 0)) {
+        return current;
+      }
+      return top;
+    }, null);
+
+    // Generate monthly chart data
+    const monthlyData = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      
+      // Count properties listed in this month
+      const monthProperties = properties.filter(p => {
+        const listedDate = new Date(p.dateListed);
+        return listedDate >= monthDate && listedDate < nextMonthDate;
+      });
+      
+      // Count offers made in this month
+      const monthOffers = offers.filter(o => {
+        const offerDate = new Date(o.createdAt);
+        return offerDate >= monthDate && offerDate < nextMonthDate;
+      });
+      
+      // Calculate views for properties listed in this month
+      const monthViews = monthProperties.reduce((sum, p) => sum + (p.viewCount || 0), 0);
+      
+      monthlyData.push({
+        month: monthNames[monthDate.getMonth()],
+        views: monthViews,
+        inquiries: monthOffers.length,
+        offers: monthOffers.filter(o => 
+          ['offer_made', 'negotiating', 'accepted', 'closed'].includes(o.status)
+        ).length
+      });
+    }
+
+    const analyticsData = {
+      totalViews,
+      totalInquiries,
+      totalOffers,
+      averageViewsPerListing,
+      conversionRate: parseFloat(conversionRate),
+      topPerformingListing: topPerformingListing ? {
+        id: topPerformingListing._id.toString(),
+        title: topPerformingListing.title,
+        views: topPerformingListing.viewCount || 0
+      } : null,
+      chartData: monthlyData
+    };
+
+    res.json(
+      successResponse(
+        analyticsData,
+        'Seller analytics retrieved successfully',
+        200
+      )
+    );
+  } catch (error) {
+    console.error('Error fetching seller analytics:', error);
+    res.status(500).json(
+      errorResponse('Failed to fetch seller analytics', 500)
+    );
+  }
+};
+
 module.exports = {
   getSellerOverview,
-  getSellerListings
+  getSellerListings,
+  getSellerAnalytics
 };

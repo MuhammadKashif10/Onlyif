@@ -204,17 +204,26 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load single property by ID
-  const loadPropertyById = async (id: string) => {
+  // Load property by ID
+  const loadPropertyById = useCallback(async (id: string) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
       const response = await propertiesApi.getPropertyById(id);
-      dispatch({ type: 'SET_CURRENT_PROPERTY', payload: response.data || response });
+      
+      if (response.success && response.data) {
+        dispatch({ type: 'SET_CURRENT_PROPERTY', payload: response.data });
+      } else {
+        dispatch({ type: 'SET_ERROR', payload: response.error || 'Failed to load property' });
+      }
     } catch (error) {
-      console.error('Error loading property:', error);
+      console.error('Error loading property by ID:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load property' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, []);
 
   // Search properties
   const searchProperties = async (params: PropertySearchParams) => {

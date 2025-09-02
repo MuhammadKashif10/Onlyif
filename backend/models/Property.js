@@ -94,7 +94,7 @@ const propertySchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: [0, 'Bathrooms cannot be negative'],
-    max: [20, 'Bathrooms cannot exceed 20']
+    max: [50, 'Bathrooms cannot exceed 50']  // Increased limit for commercial/large properties
   },
   
   squareMeters: {
@@ -152,6 +152,23 @@ const propertySchema = new mongoose.Schema({
       default: 0
     }
   }],
+
+  // Add mainImage field for quick access
+  mainImage: {
+    url: {
+      type: String,
+      default: null
+    },
+    caption: String
+  },
+
+  // Add finalImageUrl for UI rendering priority
+  finalImageUrl: {
+    url: {
+      type: String,
+      default: null
+    }
+  },
   
   status: {
     type: String,

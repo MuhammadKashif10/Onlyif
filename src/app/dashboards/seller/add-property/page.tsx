@@ -107,7 +107,7 @@ export default function AddProperty() {
       toast.error('User not authenticated');
       return;
     }
-
+  
     // Client-side validation
     const requiredFields = ['title', 'price', 'location', 'city', 'state', 'zipCode', 'bedrooms', 'bathrooms', 'squareMeters', 'propertyType', 'contactName', 'contactEmail', 'contactPhone'];
     const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
@@ -116,47 +116,48 @@ export default function AddProperty() {
       toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
-
+  
     try {
       setIsSubmitting(true);
       
-      // Structure data to match backend Property model
-      const propertyData = {
-        owner: user.id, // Use authenticated user's ID
-        title: formData.title,
-        address: {
-          street: formData.location,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          country: 'US'
-        },
-        location: {
-          coordinates: [0, 0] // You'll need to implement geocoding
-        },
-        price: parseFloat(formData.price),
-        beds: parseInt(formData.bedrooms),
-        baths: parseInt(formData.bathrooms),
-        squareMeters: parseFloat(formData.squareMeters),
-        propertyType: formData.propertyType.toLowerCase().replace(' ', '-'),
-        description: formData.description,
-        contactInfo: {
-          name: formData.contactName,
-          email: formData.contactEmail,
-          phone: formData.contactPhone
-        },
-        images: propertyImages.map((img, index) => ({
-          url: URL.createObjectURL(img),
-          caption: img.name || '',
-          isPrimary: index === 0,
-          order: index
-        })),
-        status: 'draft',
-        yearBuilt: formData.yearBuilt ? parseInt(formData.yearBuilt) : undefined,
-        lotSize: formData.lotSize ? parseFloat(formData.lotSize) : undefined
-      };
-
-      const response = await propertiesApi.createProperty(propertyData);
+      // Create FormData object for file uploads
+      const formDataToSend = new FormData();
+      
+      // Append text data
+      formDataToSend.append('owner', user.id);
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('street', formData.location);
+      formDataToSend.append('city', formData.city);
+      formDataToSend.append('state', formData.state);
+      formDataToSend.append('zipCode', formData.zipCode);
+      formDataToSend.append('price', formData.price);
+      formDataToSend.append('beds', formData.bedrooms);
+      formDataToSend.append('baths', formData.bathrooms);
+      formDataToSend.append('squareMeters', formData.squareMeters);
+      formDataToSend.append('propertyType', formData.propertyType.toLowerCase().replace(' ', '-'));
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('contactName', formData.contactName);
+      formDataToSend.append('contactEmail', formData.contactEmail);
+      formDataToSend.append('contactPhone', formData.contactPhone);
+      
+      if (formData.yearBuilt) formDataToSend.append('yearBuilt', formData.yearBuilt);
+      if (formData.lotSize) formDataToSend.append('lotSize', formData.lotSize);
+      
+      // Append image files
+      propertyImages.forEach((file, index) => {
+        formDataToSend.append('images', file);
+      });
+      
+      // Append other files if needed
+      floorPlans.forEach((file, index) => {
+        formDataToSend.append('floorPlans', file);
+      });
+      
+      videoTours.forEach((file, index) => {
+        formDataToSend.append('videos', file);
+      });
+  
+      const response = await propertiesApi.createPropertyWithFiles(formDataToSend);
       
       if (response.success) {
         toast.success('Property added successfully!');

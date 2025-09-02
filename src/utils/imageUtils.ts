@@ -73,12 +73,37 @@ export function getAddonPlaceholder(): string {
 }
 
 /**
+ * Constructs full backend URL for image paths
+ */
+function constructBackendImageUrl(imagePath: string): string {
+  // Convert backslashes to forward slashes
+  const correctedPath = imagePath.replace(/\\/g, '/');
+  
+  // Get backend URL from environment or use default
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  
+  // Ensure path starts with /
+  const normalizedPath = correctedPath.startsWith('/') ? correctedPath : `/${correctedPath}`;
+  
+  return `${backendUrl}${normalizedPath}`;
+}
+
+/**
  * Returns a safe image URL with fallback to placeholder
  */
 export function getSafeImageUrl(imageUrl?: string, propertyType?: string): string {
-  if (imageUrl && isValidImageUrl(imageUrl)) {
-    return imageUrl;
+  if (imageUrl) {
+    // Handle backend image paths
+    if (imageUrl.startsWith('/uploads') || imageUrl.includes('uploads')) {
+      return constructBackendImageUrl(imageUrl);
+    }
+    
+    // For external URLs, validate and return as-is
+    if (isValidImageUrl(imageUrl)) {
+      return imageUrl;
+    }
   }
+  
   return getPropertyPlaceholder(propertyType);
 }
 

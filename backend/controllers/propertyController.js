@@ -9,78 +9,156 @@ const { successResponse, errorResponse, paginationMeta } = require('../utils/res
 // @route   POST /api/properties
 // @access  Private (Seller only)
 const createProperty = async (req, res) => {
-  // Only sellers can create properties
-  if (req.user.role !== 'seller') {
-    return res.status(403).json(
-      errorResponse('Only sellers can create property listings', 403)
+  try {
+    // Only sellers can create properties
+    if (req.user.role !== 'seller') {
+      return res.status(403).json(
+        errorResponse('Only sellers can create property listings', 403)
+      );
+    }
+
+    const propertyData = {
+      ...req.body,
+      owner: req.user.id,
+      status: 'pending' // Default to pending until media/admin approval
+    };
+
+    // Handle image uploads from req.files
+    if (req.files && req.files.length > 0) {
+      const imagesArray = [];
+      let mainImageUrl = null;
+
+      // Process each uploaded file
+      req.files.forEach((file, index) => {
+        const imageUrl = `/uploads/${file.filename}`; // Adjust path as needed
+        
+        imagesArray.push({
+          url: imageUrl,
+          isPrimary: index === 0, // First image is primary
+          order: index
+        });
+
+        // Set first image as main image
+        if (index === 0) {
+          mainImageUrl = imageUrl;
+        }
+      });
+
+      // Set image fields
+      propertyData.images = imagesArray;
+      propertyData.mainImage = { url: mainImageUrl };
+      propertyData.finalImageUrl = { url: mainImageUrl };
+    } else {
+      // No images uploaded
+      propertyData.images = [];
+      propertyData.mainImage = { url: null };
+      propertyData.finalImageUrl = { url: null };
+    }
+
+    const property = await Property.create(propertyData);
+    
+    res.status(201).json(
+      successResponse(property, 'Property listing created successfully')
+    );
+  } catch (error) {
+    console.error('Error creating property:', error);
+    res.status(500).json(
+      errorResponse('Failed to create property listing', 500)
     );
   }
-
-  const propertyData = {
-    ...req.body,
-    owner: req.user.id,
-    status: 'pending' // Default to pending until media/admin approval
-  };
-
-  const property = await Property.create(propertyData);
-  
-  res.status(201).json(
-    successResponse(property, 'Property listing created successfully')
-  );
 };
 
 // @desc    Get property details
 // @route   GET /api/properties/:id
 // @access  Public
 const getPropertyById = async (req, res) => {
-  const property = await Property.findById(req.params.id)
-    .populate('owner', 'name email avatar')
-    .populate('agents.agent', 'name email avatar');
+  try {
+    const property = await Property.findById(req.params.id)
+      .populate('owner', 'name email')
+      .populate('agents.agent', 'name email phone');
 
-  if (!property) {
-    return res.status(404).json(
-      errorResponse('Property not found', 404)
+    if (!property) {
+      return res.status(404).json(
+        errorResponse('Property not found', 404)
+      );
+    }
+
+    // Normalize single property to flat structure
+    const propertyObj = property.toObject();
+    
+    // Normalize address to string format
+    const addressString = propertyObj.address && typeof propertyObj.address === 'object' 
+      ? `${propertyObj.address.street}, ${propertyObj.address.city}, ${propertyObj.address.state} ${propertyObj.address.zipCode}`
+      : propertyObj.address || 'Address not available';
+    
+    // Get main image URL
+    let mainImageUrl = null;
+    if (propertyObj.mainImage && propertyObj.mainImage.url) {
+      mainImageUrl = propertyObj.mainImage.url;
+    } else if (propertyObj.images && propertyObj.images.length > 0 && propertyObj.images[0].url) {
+      mainImageUrl = propertyObj.images[0].url;
+    }
+    
+    // Extract contact phone
+    const contactPhone = propertyObj.contactInfo && propertyObj.contactInfo.phone 
+      ? propertyObj.contactInfo.phone 
+      : null;
+    
+    // Transform coordinates
+    let coordinates = null;
+    if (propertyObj.location && propertyObj.location.coordinates && propertyObj.location.coordinates.length === 2) {
+      coordinates = {
+        lng: propertyObj.location.coordinates[0],
+        lat: propertyObj.location.coordinates[1]
+      };
+    }
+    
+    const normalizedProperty = {
+      id: propertyObj._id.toString(),
+      title: propertyObj.title || '',
+      address: addressString,
+      city: propertyObj.address?.city || '',
+      state: propertyObj.address?.state || '',
+      zipCode: propertyObj.address?.zipCode || '',
+      price: propertyObj.price || 0,
+      beds: propertyObj.beds || 0,
+      baths: propertyObj.baths || 0,
+      size: propertyObj.squareMeters || 0,
+      yearBuilt: propertyObj.yearBuilt || null,
+      propertyType: propertyObj.propertyType || '',
+      status: propertyObj.status || 'pending',
+      description: propertyObj.description || '',
+      features: propertyObj.features || [],
+      images: propertyObj.images || [],
+      mainImage: mainImageUrl,
+      coordinates: coordinates,
+      contactPhone: contactPhone,
+      featured: propertyObj.featured || false,
+      dateListed: propertyObj.dateListed || propertyObj.createdAt,
+      daysOnMarket: propertyObj.daysOnMarket || 0,
+      agent: propertyObj.agents && propertyObj.agents.length > 0 && propertyObj.agents[0].agent 
+        ? {
+            id: propertyObj.agents[0].agent._id || propertyObj.agents[0].agent,
+            name: propertyObj.agents[0].agent.name || 'Agent Name',
+            phone: propertyObj.agents[0].agent.phone || contactPhone || '',
+            email: propertyObj.agents[0].agent.email || ''
+          }
+        : null
+    };
+
+    res.json(
+      successResponse(
+        normalizedProperty,
+        'Property retrieved successfully',
+        200
+      )
+    );
+  } catch (error) {
+    console.error('Error fetching property:', error);
+    res.status(500).json(
+      errorResponse('Server error while fetching property', 500)
     );
   }
-
-  // Apply visibility logic - Updated to work with agents array
-  const canView = (
-    property.status === 'public' ||
-    (req.user && (
-      req.user.id === property.owner._id.toString() ||
-      req.user.role === 'admin' ||
-      (property.agents && property.agents.some(agentObj => 
-        agentObj.agent && req.user.id === agentObj.agent._id.toString()
-      ))
-    ))
-  );
-
-  if (!canView) {
-    return res.status(403).json(
-      errorResponse('Property not accessible', 403)
-    );
-  }
-
-  // Transform property to include frontend-compatible coordinates
-  const propertyObj = property.toObject();
-  
-  if (propertyObj.location && propertyObj.location.coordinates && propertyObj.location.coordinates.length === 2) {
-    propertyObj.coordinates = {
-      lng: propertyObj.location.coordinates[0],
-      lat: propertyObj.location.coordinates[1]
-    };
-  } else {
-    propertyObj.coordinates = {
-      lng: -97.7431,
-      lat: 30.2672
-    };
-  }
-  
-  delete propertyObj.location;
-
-  res.json(
-    successResponse(propertyObj, 'Property retrieved successfully')
-  );
 };
 
 // @desc    Update property
@@ -246,8 +324,8 @@ const getAllProperties = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // Build filter object - Updated to include both pending and public properties
-  const filter = { status: { $in: ['pending', 'public'] } };
+  // Build filter object - Updated to include active, pending and public properties
+  const filter = { status: { $in: ['active', 'pending', 'public'] } };
   
   if (req.query.city) filter.city = new RegExp(req.query.city, 'i');
   if (req.query.state) filter.state = new RegExp(req.query.state, 'i');
@@ -269,33 +347,76 @@ const getAllProperties = async (req, res) => {
     .skip(skip)
     .limit(limit);
 
-  // Transform properties to include frontend-compatible coordinates
-  const transformedProperties = properties.map(property => {
+  // Normalize properties to flat structure for frontend compatibility
+  const normalizedProperties = properties.map(property => {
     const propertyObj = property.toObject();
     
-    // Transform GeoJSON coordinates to frontend format
+    // Normalize address to string format
+    const addressString = propertyObj.address && typeof propertyObj.address === 'object' 
+      ? `${propertyObj.address.street}, ${propertyObj.address.city}, ${propertyObj.address.state} ${propertyObj.address.zipCode}`
+      : propertyObj.address || 'Address not available';
+    
+    // Get main image URL - prioritize mainImage, then first image, then null
+    let mainImageUrl = null;
+    if (propertyObj.mainImage && propertyObj.mainImage.url) {
+      mainImageUrl = propertyObj.mainImage.url;
+    } else if (propertyObj.images && propertyObj.images.length > 0 && propertyObj.images[0].url) {
+      mainImageUrl = propertyObj.images[0].url;
+    }
+    
+    // Extract contact phone from nested contactInfo
+    const contactPhone = propertyObj.contactInfo && propertyObj.contactInfo.phone 
+      ? propertyObj.contactInfo.phone 
+      : null;
+    
+    // Transform coordinates for frontend
+    let coordinates = null;
     if (propertyObj.location && propertyObj.location.coordinates && propertyObj.location.coordinates.length === 2) {
-      propertyObj.coordinates = {
+      coordinates = {
         lng: propertyObj.location.coordinates[0], // GeoJSON uses [longitude, latitude]
         lat: propertyObj.location.coordinates[1]
       };
-    } else {
-      // Provide fallback coordinates if missing
-      propertyObj.coordinates = {
-        lng: -97.7431, // Austin default
-        lat: 30.2672
-      };
     }
     
-    // Remove the location field to avoid confusion
-    delete propertyObj.location;
-    
-    return propertyObj;
+    // Return normalized flat structure
+    return {
+      id: propertyObj._id.toString(), // Convert MongoDB _id to string id
+      title: propertyObj.title || '',
+      address: addressString, // Flat string address
+      city: propertyObj.address?.city || '',
+      state: propertyObj.address?.state || '',
+      zipCode: propertyObj.address?.zipCode || '',
+      price: propertyObj.price || 0,
+      beds: propertyObj.beds || 0,
+      baths: propertyObj.baths || 0,
+      size: propertyObj.squareMeters || 0, // Map squareMeters to size
+      yearBuilt: propertyObj.yearBuilt || null,
+      propertyType: propertyObj.propertyType || '',
+      status: propertyObj.status || 'pending',
+      description: propertyObj.description || '',
+      features: propertyObj.features || [],
+      images: propertyObj.images || [],
+      mainImage: mainImageUrl, // Flat string URL instead of object
+      coordinates: coordinates,
+      contactPhone: contactPhone, // Flat contact phone
+      featured: propertyObj.featured || false,
+      dateListed: propertyObj.dateListed || propertyObj.createdAt,
+      daysOnMarket: propertyObj.daysOnMarket || 0,
+      // Agent information (if available)
+      agent: propertyObj.agents && propertyObj.agents.length > 0 && propertyObj.agents[0].agent 
+        ? {
+            id: propertyObj.agents[0].agent._id || propertyObj.agents[0].agent,
+            name: propertyObj.agents[0].agent.name || 'Agent Name',
+            phone: propertyObj.agents[0].agent.phone || contactPhone || '',
+            email: propertyObj.agents[0].agent.email || ''
+          }
+        : null
+    };
   });
 
   res.json(
     successResponse(
-      transformedProperties,
+      normalizedProperties,
       'Properties retrieved successfully',
       200,
       paginationMeta(page, limit, total)
@@ -543,6 +664,168 @@ const getFilterOptions = async (req, res) => {
   }
 };
 
+// ...    Get user's favorite properties
+// @route   GET /api/properties/favorites/:userId?
+// @access  Private
+const getFavoriteProperties = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user.id;
+    
+    // Find user's favorite properties
+    const user = await User.findById(userId).populate({
+      path: 'favorites',
+      match: { isDeleted: false, status: { $in: ['active', 'public'] } },
+      populate: {
+        path: 'owner',
+        select: 'name email avatar'
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+
+    res.json(
+      successResponse(
+        user.favorites || [],
+        'Favorite properties retrieved successfully'
+      )
+    );
+  } catch (error) {
+    console.error('Error fetching favorite properties:', error);
+    res.status(500).json(
+      errorResponse('Failed to fetch favorite properties', 500)
+    );
+  }
+};
+
+// ...    Create property with file uploads
+// @route   POST /api/properties/upload
+// @access  Private
+const createPropertyWithFiles = async (req, res) => {
+  try {
+    const {
+      owner, title, street, city, state, zipCode, price, beds, baths,
+      squareMeters, propertyType, yearBuilt, description,
+      contactName, contactEmail, contactPhone, lotSize
+    } = req.body;
+
+    // Validation for required fields
+    const requiredFields = {
+      owner, title, street, city, state, zipCode, price, beds, baths,
+      squareMeters, propertyType, contactName, contactEmail, contactPhone
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([key, value]) => !value && value !== 0)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
+    }
+
+    // Process uploaded files
+    const images = [];
+    const floorPlans = [];
+    const videos = [];
+
+    if (req.files) {
+      // Process property images
+      if (req.files.images) {
+        req.files.images.forEach((file, index) => {
+          images.push({
+            url: `/uploads/images/${file.filename}`,
+            caption: file.originalname,
+            isPrimary: index === 0,
+            order: index
+          });
+        });
+      }
+
+      // Process floor plans
+      if (req.files.floorPlans) {
+        req.files.floorPlans.forEach((file, index) => {
+          floorPlans.push({
+            url: `/uploads/floorplans/${file.filename}`,
+            caption: file.originalname,
+            order: index
+          });
+        });
+      }
+
+      // Process videos
+      if (req.files.videos) {
+        req.files.videos.forEach((file, index) => {
+          videos.push({
+            url: `/uploads/videos/${file.filename}`,
+            caption: file.originalname,
+            order: index
+          });
+        });
+      }
+    }
+
+    // Create property data
+    const propertyData = {
+      owner,
+      title,
+      address: {
+        street,
+        city,
+        state,
+        zipCode,
+        country: 'US'
+      },
+      location: {
+        type: 'Point',
+        coordinates: [0, 0] // You'll need to implement geocoding
+      },
+      price: parseFloat(price),
+      beds: parseInt(beds),
+      baths: parseFloat(baths),
+      squareMeters: parseFloat(squareMeters),
+      propertyType: propertyType.toLowerCase().replace(' ', '-'),
+      description: description || '',
+      contactInfo: {
+        name: contactName,
+        email: contactEmail,
+        phone: contactPhone
+      },
+      images,
+      floorPlans,
+      videos,
+      status: 'active',
+      yearBuilt: yearBuilt ? parseInt(yearBuilt) : undefined,
+      lotSize: lotSize ? parseFloat(lotSize) : undefined,
+      // Set mainImage to first uploaded image
+      mainImage: images.length > 0 ? {
+        url: images[0].url,
+        caption: images[0].caption
+      } : null
+    };
+
+    const property = new Property(propertyData);
+    await property.save();
+
+    res.status(201).json({
+      success: true,
+      data: property,
+      message: 'Property created successfully with files'
+    });
+  } catch (error) {
+    console.error('Error creating property with files:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error while creating property'
+    });
+  }
+};
+
 module.exports = {
   getAllProperties,
   getPropertyById,
@@ -554,5 +837,7 @@ module.exports = {
   getSellerProperties,
   getPropertyStats,
   submitPropertyPublic,
-  getFilterOptions  // Add this new function
+  getFilterOptions,
+  getFavoriteProperties,
+  createPropertyWithFiles  // Ensure this is exported
 };

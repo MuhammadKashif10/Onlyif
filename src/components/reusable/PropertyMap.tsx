@@ -88,8 +88,8 @@ export default function PropertyMap({
 
         {/* Property markers - only render properties with valid coordinates */}
         {validProperties.map((property, index) => {
-          const isSelected = selectedPropertyId === property.id;
-          const isHovered = hoveredPropertyId === property.id;
+          const isSelected = selectedPropertyId === property._id;
+          const isHovered = hoveredPropertyId === property._id;
           
           // Calculate marker position (simplified positioning)
           const x = 20 + (index % 8) * 80;
@@ -97,7 +97,7 @@ export default function PropertyMap({
           
           return (
             <div
-              key={property.id}
+              key={property._id}
               className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-200"
               style={{ left: `${x}px`, top: `${y}px` }}
               onClick={() => handleMarkerClick(property)}

@@ -3,45 +3,31 @@
 export interface Property {
   id: string;
   title: string;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  } | string; // Support both object and string formats
+  address: string; // Now always a string, not object
   city: string;
   state: string;
   zipCode: string;
   price: number;
   beds: number;
   baths: number;
-  size: number; // This will now represent square meters
-  yearBuilt: number;
-  lotSize: number;
+  size: number; // Maps to squareMeters from backend
+  yearBuilt?: number;
   propertyType: string;
-  status: 'pending' | 'private' | 'public' | 'sold' | 'withdrawn';
+  status: 'draft' | 'active' | 'pending' | 'sold' | 'withdrawn' | 'expired' | 'public';
   description: string;
   features: string[];
-  images: string[];
-  mainImage: string;
-  coordinates?: { // Made optional to handle missing coordinates
+  images: Array<{ url: string; caption?: string; isPrimary?: boolean; order?: number; }>;
+  mainImage: string | null; // Now a flat string URL, not object
+  coordinates?: {
     lat: number;
     lng: number;
   };
-  agent: Agent;
-  assignedAgent?: Agent; // New field for assigned agent
-  similarProperties: string[];
+  contactPhone: string | null; // Flat contact phone field
+  agent?: Agent | null;
   featured: boolean;
   dateListed: string;
   daysOnMarket: number;
-  // New visibility-related fields
-  hasRequiredMedia: boolean;
-  isAdminApproved: boolean;
-  canChangeVisibility: boolean;
-  visibilityLastUpdated?: string;
 }
-
 export interface Agent {
   id: string;
   name: string;

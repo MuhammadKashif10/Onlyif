@@ -202,7 +202,13 @@ const userSchema = new mongoose.Schema({
   isSeeded: {
     type: Boolean,
     default: false
-  }
+  },
+  
+  // Add favorites field to store user's favorite properties
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Property'
+  }]
 }, {
   timestamps: true
 });
@@ -284,6 +290,24 @@ userSchema.methods.restore = function() {
   this.deletedBy = null;
   this.isActive = true;
   return this.save();
+};
+
+// Add methods for managing favorites
+userSchema.methods.addToFavorites = function(propertyId) {
+  if (!this.favorites.includes(propertyId)) {
+    this.favorites.push(propertyId);
+    return this.save();
+  }
+  return Promise.resolve(this);
+};
+
+userSchema.methods.removeFromFavorites = function(propertyId) {
+  this.favorites = this.favorites.filter(id => !id.equals(propertyId));
+  return this.save();
+};
+
+userSchema.methods.isFavorite = function(propertyId) {
+  return this.favorites.some(id => id.equals(propertyId));
 };
 
 // Query helpers

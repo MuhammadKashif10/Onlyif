@@ -7,16 +7,17 @@ const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const path = require('path');
 require('dotenv').config();
 
-// Import database connection
+// Database connection
 const connectDB = require('./config/db');
 
-// Import middleware
+// Middleware imports
 const { errorHandler } = require('./middleware/errorHandler');
 const { generalLimiter, authLimiter, messageLimiter } = require('./middleware/rateLimitMiddleware');
 
-// Import routes
+// Route imports
 const authRoutes = require('./routes/authRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -35,26 +36,21 @@ connectDB();
 
 const app = express();
 
-// CORS configuration
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001', 
-  'http://localhost:3010',  // ✅ Your frontend URL
-  'http://127.0.0.1:3010',  // Add this for local IP
-  'https://your-frontend-domain.com'
-];
-
-// Temporary development CORS (replace the existing corsOptions)
+// CORS configuration - Single, unified configuration
 const corsOptions = {
-  origin: true, // Allow all origins in development
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3010',
+    'http://127.0.0.1:3010'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
-// Security middleware
-app.use(helmet());
+// Apply middleware in correct order
 app.use(cors(corsOptions));
+app.use(helmet());
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -70,6 +66,9 @@ if (process.env.NODE_ENV === 'development') {
 
 // Rate limiting
 app.use(generalLimiter);
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -93,9 +92,9 @@ app.use('/api/terms', termsRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/agent', agentRoutes);
-app.use('/api/cash-offers', require('./routes/cashOfferRoutes')); // Add this line
+app.use('/api/cash-offers', require('./routes/cashOfferRoutes'));
 
-// Handle undefined routes
+// Catch all handler
 app.all('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -103,14 +102,14 @@ app.all('*', (req, res) => {
   });
 });
 
-// Error handling middleware
+// Error handling middleware (must be last)
 app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });
 
 module.exports = app;

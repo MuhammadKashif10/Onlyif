@@ -31,12 +31,20 @@ export default function FilterBar({
       setLoading(true);
       try {
         const filterOptions = await propertiesApi.getFilterOptions();
-        setPropertyTypes(filterOptions.propertyTypes);
-        setCities(filterOptions.cities);
-        setPriceRange(filterOptions.priceRange);
-        setSizeRange(filterOptions.sizeRange);
+        // Handle the FilterOptionsData structure correctly
+        if (filterOptions) {
+          setPropertyTypes(filterOptions.propertyTypes || []);
+          setCities(filterOptions.cities || []);
+          setPriceRange(filterOptions.priceRange || { min: 0, max: 1000000 });
+          setSizeRange(filterOptions.sizeRange || { min: 0, max: 10000 });
+        }
       } catch (error) {
         console.error('Error loading filter options:', error);
+        // Set default values on error
+        setPropertyTypes([]);
+        setCities([]);
+        setPriceRange({ min: 0, max: 1000000 });
+        setSizeRange({ min: 0, max: 10000 });
       } finally {
         setLoading(false);
       }
@@ -59,7 +67,7 @@ export default function FilterBar({
     onSearchChange('');
   };
 
-  const hasActiveFilters = Object.keys(currentFilters).length > 0 || searchQuery.length > 0;
+  const hasActiveFilters = Object.keys(currentFilters || {}).length > 0 || searchQuery.length > 0;
 
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}>
@@ -124,7 +132,7 @@ export default function FilterBar({
                   Location
                 </label>
                 <select
-                  value={currentFilters.location || ''}
+                  value={currentFilters?.location || ''}
                   onChange={(e) => handleFilterChange('location', e.target.value || undefined)}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
@@ -143,7 +151,7 @@ export default function FilterBar({
                   Property Type
                 </label>
                 <select
-                  value={currentFilters.propertyType || ''}
+                  value={currentFilters?.propertyType || ''}
                   onChange={(e) => handleFilterChange('propertyType', e.target.value || undefined)}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
@@ -166,7 +174,7 @@ export default function FilterBar({
                     <input
                       type="number"
                       placeholder="Min"
-                      value={currentFilters.priceMin || ''}
+                      value={currentFilters?.priceMin || ''}
                       onChange={(e) => handleFilterChange('priceMin', e.target.value ? Number(e.target.value) : undefined)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
@@ -175,7 +183,7 @@ export default function FilterBar({
                     <input
                       type="number"
                       placeholder="Max"
-                      value={currentFilters.priceMax || ''}
+                      value={currentFilters?.priceMax || ''}
                       onChange={(e) => handleFilterChange('priceMax', e.target.value ? Number(e.target.value) : undefined)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
@@ -195,14 +203,14 @@ export default function FilterBar({
                   <input
                     type="number"
                     placeholder="Min sq"
-                    value={currentFilters.minSize || ''}
+                    value={currentFilters?.minSize || ''}
                     onChange={(e) => handleFilterChange('minSize', e.target.value ? Number(e.target.value) : undefined)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
                     type="number"
                     placeholder="Max sq m"
-                    value={currentFilters.maxSize || ''}
+                    value={currentFilters?.maxSize || ''}
                     onChange={(e) => handleFilterChange('maxSize', e.target.value ? Number(e.target.value) : undefined)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -219,7 +227,7 @@ export default function FilterBar({
                     Bedrooms
                   </label>
                   <select
-                    value={currentFilters.beds || ''}
+                    value={currentFilters?.beds || ''}
                     onChange={(e) => handleFilterChange('beds', e.target.value ? Number(e.target.value) : undefined)}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
@@ -236,7 +244,7 @@ export default function FilterBar({
                     Bathrooms
                   </label>
                   <select
-                    value={currentFilters.baths || ''}
+                    value={currentFilters?.baths || ''}
                     onChange={(e) => handleFilterChange('baths', e.target.value ? Number(e.target.value) : undefined)}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
@@ -256,7 +264,7 @@ export default function FilterBar({
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <select
-                    value={currentFilters.sortBy || ''}
+                    value={currentFilters?.sortBy || ''}
                     onChange={(e) => handleFilterChange('sortBy', e.target.value || undefined)}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
@@ -267,7 +275,7 @@ export default function FilterBar({
                     <option value="beds">Bedrooms</option>
                   </select>
                   <select
-                    value={currentFilters.sortOrder || 'asc'}
+                    value={currentFilters?.sortOrder || 'asc'}
                     onChange={(e) => handleFilterChange('sortOrder', e.target.value as 'asc' | 'desc')}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >

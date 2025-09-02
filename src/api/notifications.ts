@@ -1,5 +1,5 @@
 import { apiClient } from '../lib/api-client';
-import { withMockFallback } from '../utils/mockWrapper';
+// Remove this import: import { withMockFallback } from '../utils/mockWrapper';
 
 interface Notification {
   id: string;
@@ -33,41 +33,34 @@ interface EmailNotificationRequest {
 }
 
 class NotificationAPI {
-  // Fix the getNotifications method to match component expectations
+  // Fix the getNotifications method to use database only
   async getNotifications(page = 1, limit = 20, filter = 'all'): Promise<NotificationResponse> {
-    const mockResponse = {
-      notifications: [
-        {
-          id: '1',
-          userId: 'user1',
-          userType: 'buyer' as const,
-          type: 'new_match' as const,
-          title: 'New Property Match',
-          message: 'A new property matching your criteria has been listed.',
-          data: { propertyId: 'prop1' },
-          read: false,
-          createdAt: new Date().toISOString(),
-          emailSent: true
-        }
-      ],
-      pagination: { page, limit, total: 1, pages: 1 },
-      unreadCount: 1
-    };
-
-    const realCall = async () => {
-      const response = await apiClient.get<{ data: NotificationResponse }>(
-        `/notifications?page=${page}&limit=${limit}&filter=${filter}`
-      );
-      return response.data;
-    };
-
-    return withMockFallback(() => Promise.resolve(mockResponse), realCall);
+    try {
+      const response = await apiClient.get(`/notifications?page=${page}&limit=${limit}&filter=${filter}`);
+      return response.data.data || {
+        notifications: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        unreadCount: 0
+      };
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      // Return empty response instead of mock data
+      return {
+        notifications: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        unreadCount: 0
+      };
+    }
   }
 
-  // Add a method for user-specific notifications
   async getUserNotifications(userId: string, userType: 'buyer' | 'seller' | 'agent'): Promise<Notification[]> {
-    const response = await this.getNotifications(1, 20, 'all');
-    return response.notifications.filter(n => n.userId === userId && n.userType === userType);
+    try {
+      const response = await apiClient.get(`/notifications/user/${userId}?userType=${userType}`);
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching user notifications:', error);
+      return [];
+    }
   }
 
   // Remove the old getAllNotifications method or rename it

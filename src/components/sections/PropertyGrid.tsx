@@ -29,7 +29,7 @@ export default function PropertyGrid({
   onPropertyClick
 }: PropertyGridProps) {
   // Fix: Access properties from state instead of destructuring directly
-  const { state, loadProperties } = usePropertyContext();
+  const { state, loadProperties, loadFeaturedProperties } = usePropertyContext();
   const { properties: allProperties, loading: contextLoading, error: contextError } = state;
   
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
@@ -41,19 +41,36 @@ export default function PropertyGrid({
   const [filters, setFilters] = useState<FilterOptions>({});
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Load properties when component mounts
+  useEffect(() => {
+    const initializeProperties = async () => {
+      if (!Array.isArray(allProperties) || allProperties.length === 0) {
+        try {
+          // Fix: Use loadFeaturedProperties when featuredOnly is true
+          if (featuredOnly) {
+            await loadFeaturedProperties();
+          } else {
+            await loadProperties();
+          }
+        } catch (err) {
+          console.error('Failed to load properties:', err);
+        }
+      }
+    };
+    
+    initializeProperties();
+  }, [featuredOnly]); // Add featuredOnly to dependencies
+
   // Filter and paginate properties with array safety checks
   useEffect(() => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fix: Ensure allProperties is an array before spreading
-      let properties = Array.isArray(allProperties) ? [...allProperties] : [];
-
-      // Apply featured filter
-      if (featuredOnly) {
-        properties = properties.filter(p => p.featured);
-      }
+      // Fix: Use featuredProperties from state when featuredOnly is true
+      let properties = featuredOnly 
+        ? (Array.isArray(state.featuredProperties) ? [...state.featuredProperties] : [])
+        : (Array.isArray(allProperties) ? [...allProperties] : []);
 
       // Apply search query
       if (searchQuery.trim()) {
@@ -66,18 +83,20 @@ export default function PropertyGrid({
         );
       }
 
-      // Apply filters
-      if (filters.propertyType) {
-        properties = properties.filter(p => p.propertyType === filters.propertyType);
-      }
-      if (filters.city) {
-        properties = properties.filter(p => p.city === filters.city);
-      }
-      if (filters.minPrice) {
-        properties = properties.filter(p => p.price >= filters.minPrice!);
-      }
-      if (filters.maxPrice) {
-        properties = properties.filter(p => p.price <= filters.maxPrice!);
+      // Apply filters (only if not featuredOnly, since featured properties are pre-filtered)
+      if (!featuredOnly) {
+        if (filters.propertyType) {
+          properties = properties.filter(p => p.propertyType === filters.propertyType);
+        }
+        if (filters.city) {
+          properties = properties.filter(p => p.city === filters.city);
+        }
+        if (filters.minPrice) {
+          properties = properties.filter(p => p.price >= filters.minPrice!);
+        }
+        if (filters.maxPrice) {
+          properties = properties.filter(p => p.price <= filters.maxPrice!);
+        }
       }
       if (filters.beds) {
         properties = properties.filter(p => p.beds >= filters.beds!);

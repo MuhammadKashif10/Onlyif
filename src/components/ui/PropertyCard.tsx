@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -148,10 +149,9 @@ export default function PropertyCard({
             </span>
           </div>
         )}
-      </div>
 
         {/* View Details Button */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-4">
           <span className="text-blue-600 font-medium text-sm group-hover:text-blue-700 transition-colors duration-200">
             {onClick ? 'Select Property' : 'View Details'}
             <svg className="inline-block w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -159,7 +159,7 @@ export default function PropertyCard({
             </svg>
           </span>
         </div>
-      
+      </div>
     </>
   );
 

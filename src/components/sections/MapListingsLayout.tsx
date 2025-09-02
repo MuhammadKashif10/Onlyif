@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Property } from '@/types/api';
 import { usePropertyContext } from '@/context/PropertyContext';
 import PropertyMap from '../reusable/PropertyMap';
@@ -11,7 +12,7 @@ import { PropertyGridSkeleton } from '../ui/LoadingSkeleton';
 import { LoadingError, NoResults } from '../ui/ErrorMessage';
 import { getSafeImageUrl } from '@/utils/imageUtils';
 import { FilterOptions } from '@/api';
-import { formatPropertyAddress } from '@/utils/addressUtils';
+import { formatPropertyAddress, getSearchableAddress } from '@/utils/addressUtils';
 
 interface MapListingsLayoutProps {
   showFilters?: boolean;
@@ -30,164 +31,180 @@ export default function MapListingsLayout({
   className = '',
   onPropertyClick
 }: MapListingsLayoutProps) {
-  // Fix: Access properties from state instead of destructuring directly
-  const { state, loadProperties } = usePropertyContext();
-  const { properties: allProperties, loading: contextLoading, error: contextError } = state;
-  
-  // Add console logging to trace data flow
-  console.log('🗺️ MapListingsLayout - Properties state:', {
-    allPropertiesCount: allProperties?.length || 0,
-    contextLoading,
-    contextError,
-    allProperties: allProperties?.slice(0, 2) // Log first 2 properties for debugging
-  });
-  
-  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const {
+    state,
+    loadProperties,
+    setFilters,
+    resetPagination
+  } = usePropertyContext();
+
+  // Extract from state
+  const {
+    properties: allProperties,
+    loading: contextLoading,
+    error: contextError,
+    searchResults,
+    filters,
+    pagination
+  } = state;
+
+  // Local state
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalProperties, setTotalProperties] = useState(0);
-  const [filters, setFilters] = useState<FilterOptions>({});
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
-  const [showMap, setShowMap] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
 
-  // Add missing useEffect to load properties on mount
+  // Calculate pagination
+  const totalProperties = filteredProperties.length;
+  const totalPages = Math.ceil(totalProperties / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProperties = filteredProperties.slice(startIndex, endIndex);
+
+  // Load properties on mount
   useEffect(() => {
-    console.log('🚀 MapListingsLayout - Loading properties on mount...');
-    loadProperties();
-  }, [loadProperties]);
-
-  // Filter and paginate properties (same logic as PropertyGrid)
-  useEffect(() => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      console.log('🔄 MapListingsLayout - Filtering properties:', {
-        allPropertiesLength: allProperties?.length || 0,
-        featuredOnly,
-        searchQuery,
-        filters
+    console.log('🔄 MapListingsLayout - Loading properties...', { allProperties: allProperties?.length });
+    if (!allProperties || allProperties.length === 0) {
+      loadProperties().then(() => {
+        console.log('✅ Properties loaded successfully');
+      }).catch((error) => {
+        console.error('❌ Failed to load properties:', error);
       });
-
-      // Ensure allProperties is an array
-      let properties = Array.isArray(allProperties) ? [...allProperties] : [];
-
-      // Apply featured filter
-      if (featuredOnly) {
-        properties = properties.filter(p => p.featured);
-      }
-
-      // Apply search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        properties = properties.filter(p => 
-          p.title.toLowerCase().includes(query) ||
-          p.address.toLowerCase().includes(query) ||
-          p.city.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query)
-        );
-      }
-
-      // Apply filters
-      if (filters.propertyType) {
-        properties = properties.filter(p => p.propertyType === filters.propertyType);
-      }
-      if (filters.city) {
-        properties = properties.filter(p => p.city === filters.city);
-      }
-      if (filters.minPrice) {
-        properties = properties.filter(p => p.price >= filters.minPrice!);
-      }
-      if (filters.maxPrice) {
-        properties = properties.filter(p => p.price <= filters.maxPrice!);
-      }
-      if (filters.beds) {
-        properties = properties.filter(p => p.beds >= filters.beds!);
-      }
-      if (filters.baths) {
-        properties = properties.filter(p => p.baths >= filters.baths!);
-      }
-      if (filters.minSize) {
-        properties = properties.filter(p => p.size >= filters.minSize!);
-      }
-      if (filters.maxSize) {
-        properties = properties.filter(p => p.size <= filters.maxSize!);
-      }
-
-      // Sort properties
-      if (filters.sortBy) {
-        switch (filters.sortBy) {
-          case 'price-asc':
-            properties.sort((a, b) => a.price - b.price);
-            break;
-          case 'price-desc':
-            properties.sort((a, b) => b.price - a.price);
-            break;
-          case 'newest':
-            properties.sort((a, b) => new Date(b.dateListed).getTime() - new Date(a.dateListed).getTime());
-            break;
-          case 'oldest':
-            properties.sort((a, b) => new Date(a.dateListed).getTime() - new Date(b.dateListed).getTime());
-            break;
-        }
-      }
-
-      const total = properties.length;
-      setTotalProperties(total);
-
-      // Apply pagination
-      if (showPagination) {
-        const totalPagesCalc = Math.ceil(total / itemsPerPage);
-        setTotalPages(totalPagesCalc);
-        
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        properties = properties.slice(startIndex, endIndex);
-      }
-
-      setFilteredProperties(properties);
-    } catch (err) {
-      setError('Failed to load properties. Please try again.');
-      console.error('Error filtering properties:', err);
-    } finally {
-      setLoading(false);
     }
-  }, [allProperties, filters, searchQuery, currentPage, itemsPerPage, showPagination, featuredOnly]);
+  }, [allProperties, loadProperties]);
 
-  const handleFiltersChange = (newFilters: FilterOptions) => {
-    setFilters(newFilters);
+  // Filter properties based on featuredOnly and other criteria
+  useEffect(() => {
+    let filtered = Array.isArray(allProperties) ? [...allProperties] : [];
+
+    // Apply featured filter if needed
+    if (featuredOnly) {
+      filtered = filtered.filter(property => property.featured);
+    }
+
+    // Apply search query if exists
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(property => 
+        property.title?.toLowerCase().includes(query) ||
+        property.address?.toLowerCase().includes(query) ||
+        property.city?.toLowerCase().includes(query) ||
+        property.state?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply filters from context
+    if (filters && filters.city) {
+      filtered = filtered.filter(property => 
+        property.city?.toLowerCase().includes(filters.city!.toLowerCase())
+      );
+    }
+    if (filters && filters.propertyType) {
+      filtered = filtered.filter(property => property.propertyType === filters.propertyType);
+    }
+    if (filters && filters.minPrice) {
+      filtered = filtered.filter(property => property.price >= filters.minPrice!);
+    }
+    if (filters && filters.maxPrice) {
+      filtered = filtered.filter(property => property.price <= filters.maxPrice!);
+    }
+    if (filters && filters.beds) {
+      filtered = filtered.filter(property => property.beds >= filters.beds!);
+    }
+    if (filters && filters.baths) {
+      filtered = filtered.filter(property => property.baths >= filters.baths!);
+    }
+
+    setFilteredProperties(filtered);
+    
+    // Reset to first page when filters change
+    if (currentPage > 1) {
+      setCurrentPage(1);
+    }
+  }, [allProperties, featuredOnly, searchQuery, filters, currentPage]);
+
+  // Handle filter changes
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    updateFilters(newFilters);
     setCurrentPage(1);
   };
 
-  const handleSearchChange = (query: string) => {
+  // Handle search
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
   };
 
+  // Handle pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    updatePagination({ ...pagination, page });
   };
 
+  // Handle property selection for map
   const handlePropertySelect = (property: Property) => {
-    setSelectedPropertyId(property.id);
-    onPropertyClick?.(property);
+    const propertyId = property._id || property.id;
+    setSelectedPropertyId(propertyId);
+    if (onPropertyClick) {
+      onPropertyClick(property);
+    }
   };
 
-  const handlePropertyHover = (property: Property | null) => {
-    setHoveredPropertyId(property?.id || null);
-  };
-
+  // Handle property card hover (unified function)
   const handlePropertyCardHover = (property: Property | null) => {
-    setHoveredPropertyId(property?.id || null);
+    const propertyId = property?._id || property?.id;
+    setHoveredPropertyId(propertyId || null);
+  };
+
+  // Handle view details navigation
+  const handleViewDetails = (property: Property) => {
+    const propertyId = property._id || property.id;
+    if (propertyId) {
+      router.push(`/property/${propertyId}`);
+    } else {
+      console.error('Cannot navigate: Property ID not found', property);
+    }
   };
 
   // Add refresh function for error handling
   const refreshProperties = () => {
     loadProperties();
+  };
+
+  // Helper function to get property image
+  const getPropertyImage = (property: Property): string => {
+    if (property.mainImage) {
+      return property.mainImage;
+    }
+    
+    if (property.images && property.images.length > 0 && property.images[0].url) {
+      return property.images[0].url;
+    }
+    
+    return '/images/default-property.jpg';
+  };
+
+  // Helper function to format address
+  const formatAddress = (property: Property): string => {
+    return property.address || 'Address not available';
+  };
+
+  // Enhanced property validation for normalized data
+  const isValidProperty = (property: any): property is Property => {
+    return (
+      property &&
+      typeof property === 'object' &&
+      typeof property.id === 'string' &&
+      typeof property.title === 'string' &&
+      typeof property.address === 'string' &&
+      typeof property.price === 'number' &&
+      typeof property.beds === 'number' &&
+      typeof property.baths === 'number'
+    );
   };
 
   // Handle loading state
@@ -211,211 +228,106 @@ export default function MapListingsLayout({
     );
   }
 
+  // Handle context error with fallback
   if (contextError && allProperties.length === 0) {
     return (
-      <div className={`map-listings-layout ${className}`}>
+      <div className={className}>
         <LoadingError 
-          message={contextError}
-          onRetry={refreshProperties}
+          message={contextError} 
+          onRetry={refreshProperties} 
         />
       </div>
     );
   }
 
   return (
-    <div className={`map-listings-layout ${className}`}>
-      {/* Filters */}
-      {showFilters && (
-        <div className="mb-6">
+    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${className}`}>
+      {/* Left Column - Filters and Property List */}
+      <div className="space-y-6">
+        {/* Filters */}
+        {showFilters && (
           <FilterBar
-            onFiltersChange={handleFiltersChange}
-            onSearchChange={handleSearchChange}
+            onFiltersChange={handleFilterChange}
+            onSearchChange={handleSearch}
             currentFilters={filters}
             searchQuery={searchQuery}
           />
-        </div>
-      )}
+        )}
 
-      {/* Results Summary and View Toggle */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+        {/* Results Summary */}
+        <div className="flex justify-between items-center">
           <p className="text-gray-600">
-            Showing {filteredProperties.length} of {totalProperties.toLocaleString()} properties
+            {totalProperties === 0 ? 'No properties found' : 
+             `Showing ${startIndex + 1}-${Math.min(endIndex, totalProperties)} of ${totalProperties} properties`}
           </p>
         </div>
-        
-        {/* View Toggle */}
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowMap(true)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              showMap 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Map
-          </button>
-          <button
-            onClick={() => setShowMap(false)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              !showMap 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            List
-          </button>
-        </div>
+
+        {/* Property Grid */}
+        {currentProperties.length === 0 ? (
+          <NoResults 
+            message="No properties match your criteria" 
+            onReset={() => {
+              setSearchQuery('');
+              updateFilters({});
+              setCurrentPage(1);
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {currentProperties.map((property) => {
+              // Validate property object with normalized structure
+              if (!isValidProperty(property)) {
+                console.warn('Invalid property object:', property);
+                return null;
+              }
+
+              return (
+                <PropertyCard
+                  key={property.id}
+                  id={property.id}
+                  title={property.title}
+                  address={property.address}
+                  price={property.price}
+                  beds={property.beds}
+                  baths={property.baths}
+                  size={property.size}
+                  image={property.mainImage || '/images/default-property.jpg'}
+                  featured={property.featured}
+                  onClick={() => handleViewDetails(property)}
+                  onHover={() => handlePropertyCardHover(property)}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {showPagination && totalPages > 1 && (
+          <div className="mt-12">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={totalProperties}
+              itemsPerPage={itemsPerPage}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Main Content */}
-      {filteredProperties.length > 0 ? (
-        <>
-          <div className={`grid gap-6 ${showMap ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
-            {/* Map Section */}
-            {showMap && (
-              <div className="lg:sticky lg:top-6 h-[600px]">
-                <PropertyMap
-                  properties={Array.isArray(allProperties) ? allProperties.filter(p => {
-                    // Show all properties that match current filters on map
-                    let matches = true;
-                    if (featuredOnly) matches = matches && p.featured;
-                    if (searchQuery.trim()) {
-                      const query = searchQuery.toLowerCase();
-                      matches = matches && (
-                        p.title.toLowerCase().includes(query) ||
-                        p.address.toLowerCase().includes(query) ||
-                        p.city.toLowerCase().includes(query) ||
-                        p.description.toLowerCase().includes(query)
-                      );
-                    }
-                    if (filters.propertyType) matches = matches && p.propertyType === filters.propertyType;
-                    if (filters.city) matches = matches && p.city === filters.city;
-                    if (filters.minPrice) matches = matches && p.price >= filters.minPrice;
-                    if (filters.maxPrice) matches = matches && p.price <= filters.maxPrice;
-                    if (filters.beds) matches = matches && p.beds >= filters.beds;
-                    if (filters.baths) matches = matches && p.baths >= filters.baths;
-                    if (filters.minSize) matches = matches && p.size >= filters.minSize;
-                    if (filters.maxSize) matches = matches && p.size <= filters.maxSize;
-                    return matches;
-                  }) : []}
-                  selectedPropertyId={selectedPropertyId || hoveredPropertyId || undefined}
-                  onPropertySelect={handlePropertySelect}
-                  onPropertyHover={handlePropertyHover}
-                  className="h-full"
-                />
-              </div>
-            )}
-
-            {/* Listings Section */}
-            <div className={showMap ? '' : 'max-w-7xl mx-auto'}>
-              <div className={`grid gap-6 ${
-                showMap 
-                  ? 'grid-cols-1' 
-                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-              }`}>
-                {filteredProperties.map((property) => {
-                  // Ensure property is a valid object with required fields
-                  if (!property || typeof property !== 'object' || !property.id) {
-                    console.warn('Invalid property object:', property);
-                    return null;
-                  }
-                  
-                  // Format address object into string
-                  const formatAddress = (address: any) => {
-                    if (typeof address === 'string') {
-                      return address;
-                    }
-                    if (address && typeof address === 'object') {
-                      const parts = [];
-                      if (address.street) parts.push(address.street);
-                      if (address.city) parts.push(address.city);
-                      if (address.state) parts.push(address.state);
-                      if (address.zipCode) parts.push(address.zipCode);
-                      return parts.join(', ') || 'Address not available';
-                    }
-                    return 'Address not available';
-                  };
-                  
-                  return (
-                    <div
-                      key={property.id}
-                      onMouseEnter={() => handlePropertyCardHover(property)}
-                      onMouseLeave={() => handlePropertyCardHover(null)}
-                      className={`transition-all duration-200 ${
-                        hoveredPropertyId === property.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-                      }`}
-                    >
-                      {/* Debug logging for property data */}
-                      {console.log('🏠 Property data:', {
-                        id: property.id,
-                        title: property.title,
-                        price: property.price,
-                        beds: property.beds,
-                        baths: property.baths,
-                        size: property.size,
-                        squareMeters: property.squareMeters,
-                        images: property.images,
-                        mainImage: property.mainImage
-                      })}
-                      {/* Additional debug for image processing */}
-                      {console.log('🖼️ Image processing:', {
-                        mainImage: property.mainImage,
-                        firstImage: property.images?.[0],
-                        imagesArray: property.images,
-                        finalImageUrl: property.mainImage || property.images?.[0]
-                      })}
-                      <PropertyCard
-                        id={property.id || ''}
-                        title={property.title || 'Untitled Property'}
-                        address={formatPropertyAddress(property.address)}
-                        price={property.price || null}
-                        beds={property.beds || null}
-                        baths={property.baths || null}
-                        size={property.squareMeters || property.size || null}
-                        image={
-                          property.mainImage?.url ||
-                          property.images?.find(img => img.isPrimary)?.url ||
-                          property.images?.[0]?.url ||
-                          ''
-                        }
-                        featured={property.featured || false}
-                        onSelect={() => handlePropertySelect(property)}
-                        isSelected={selectedPropertyId === property.id}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination */}
-              {showPagination && totalPages > 1 && (
-                <div className="mt-12">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                    totalItems={totalProperties}
-                    itemsPerPage={itemsPerPage}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        <NoResults
-          message={allProperties.length === 0 ? "No properties available yet" : "No properties found"}
-          suggestion={
-            allProperties.length === 0
-              ? "New properties will appear here as sellers add them. Check back soon!"
-              : searchQuery || Object.keys(filters).length > 0
-              ? 'Try adjusting your search criteria or filters.'
-              : 'Check back later for new listings.'
-          }
-        />
-      )}
+      {/* Right Column - Map */}
+      <div className="lg:sticky lg:top-4 h-[600px]">
+        <div className="w-full h-full">
+          <PropertyMap
+            properties={currentProperties}
+            selectedPropertyId={selectedPropertyId}
+            hoveredPropertyId={hoveredPropertyId}
+            onPropertySelect={handlePropertySelect}
+            onPropertyHover={handlePropertyCardHover}
+            className="w-full h-full rounded-lg"
+          />
+        </div>
+      </div>
     </div>
   );
 }

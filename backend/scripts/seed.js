@@ -196,7 +196,7 @@ const seedData = async () => {
           email: 'mike.davis@onlyif.com',
           phone: '(555) 987-6543'
         },
-        featured: false
+        featured: true  // Change from false to true
       }
     ];
 
