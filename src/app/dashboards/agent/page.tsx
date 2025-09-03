@@ -67,8 +67,8 @@ export default function AgentDashboard() {
   const currentUserId = user?.id || 'agent-456';
   const currentUserRole = 'agent';
   
-  // Add missing state variables
-  const [agentName, setAgentName] = useState('Sarah Johnson');
+  // Fix: Use dynamic user name instead of hardcoded value
+  const [agentName, setAgentName] = useState(user?.name || 'Agent');
   const [activeTab, setActiveTab] = useState('overview');
   const [assignments, setAssignments] = useState<PropertyAssignment[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -109,6 +109,13 @@ export default function AgentDashboard() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  
+  // Update agent name when user data changes
+  useEffect(() => {
+    if (user?.name) {
+      setAgentName(user.name);
+    }
+  }, [user]);
   
   // Add fetchAgentProperties function
   const fetchAgentProperties = async () => {

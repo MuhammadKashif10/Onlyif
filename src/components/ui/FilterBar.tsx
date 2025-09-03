@@ -132,33 +132,14 @@ export default function FilterBar({
                   Location
                 </label>
                 <select
-                  value={currentFilters?.location || ''}
-                  onChange={(e) => handleFilterChange('location', e.target.value || undefined)}
+                  value={currentFilters?.city || currentFilters?.location || ''}
+                  onChange={(e) => handleFilterChange('city', e.target.value || undefined)}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="">All Locations</option>
                   {cities.map((city) => (
                     <option key={city} value={city}>
                       {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Property Type Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Property Type
-                </label>
-                <select
-                  value={currentFilters?.propertyType || ''}
-                  onChange={(e) => handleFilterChange('propertyType', e.target.value || undefined)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="">All Types</option>
-                  {propertyTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
                     </option>
                   ))}
                 </select>
@@ -174,8 +155,8 @@ export default function FilterBar({
                     <input
                       type="number"
                       placeholder="Min"
-                      value={currentFilters?.priceMin || ''}
-                      onChange={(e) => handleFilterChange('priceMin', e.target.value ? Number(e.target.value) : undefined)}
+                      value={currentFilters?.minPrice || currentFilters?.priceMin || ''}
+                      onChange={(e) => handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : undefined)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                   </div>
@@ -183,8 +164,8 @@ export default function FilterBar({
                     <input
                       type="number"
                       placeholder="Max"
-                      value={currentFilters?.priceMax || ''}
-                      onChange={(e) => handleFilterChange('priceMax', e.target.value ? Number(e.target.value) : undefined)}
+                      value={currentFilters?.maxPrice || currentFilters?.priceMax || ''}
+                      onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : undefined)}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                   </div>

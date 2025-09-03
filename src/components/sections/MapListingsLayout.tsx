@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Property } from '@/types/api';
 import { usePropertyContext } from '@/context/PropertyContext';
-import PropertyMap from '../reusable/PropertyMap';
 import PropertyCard from '../ui/PropertyCard';
 import FilterBar from '../ui/FilterBar';
 import Pagination from '../reusable/Pagination';
@@ -98,25 +97,44 @@ export default function MapListingsLayout({
     }
 
     // Apply filters from context
-    if (filters && filters.city) {
-      filtered = filtered.filter(property => 
-        property.city?.toLowerCase().includes(filters.city!.toLowerCase())
-      );
-    }
-    if (filters && filters.propertyType) {
-      filtered = filtered.filter(property => property.propertyType === filters.propertyType);
-    }
-    if (filters && filters.minPrice) {
-      filtered = filtered.filter(property => property.price >= filters.minPrice!);
-    }
-    if (filters && filters.maxPrice) {
-      filtered = filtered.filter(property => property.price <= filters.maxPrice!);
-    }
-    if (filters && filters.beds) {
-      filtered = filtered.filter(property => property.beds >= filters.beds!);
-    }
-    if (filters && filters.baths) {
-      filtered = filtered.filter(property => property.baths >= filters.baths!);
+    if (filters) {
+      // Handle city/location filter (support both field names)
+      if (filters.city || filters.location) {
+        const cityFilter = filters.city || filters.location;
+        filtered = filtered.filter(property => 
+          property.city?.toLowerCase().includes(cityFilter!.toLowerCase())
+        );
+      }
+      
+      if (filters.propertyType) {
+        filtered = filtered.filter(property => property.propertyType === filters.propertyType);
+      }
+      
+      // Handle price filters (support both formats)
+      const minPrice = filters.minPrice || filters.priceMin;
+      const maxPrice = filters.maxPrice || filters.priceMax;
+      
+      if (minPrice) {
+        filtered = filtered.filter(property => property.price >= minPrice);
+      }
+      if (maxPrice) {
+        filtered = filtered.filter(property => property.price <= maxPrice);
+      }
+      
+      if (filters.beds) {
+        filtered = filtered.filter(property => property.beds >= filters.beds!);
+      }
+      if (filters.baths) {
+        filtered = filtered.filter(property => property.baths >= filters.baths!);
+      }
+      
+      // Handle size filters
+      if (filters.minSize) {
+        filtered = filtered.filter(property => property.size >= filters.minSize!);
+      }
+      if (filters.maxSize) {
+        filtered = filtered.filter(property => property.size <= filters.maxSize!);
+      }
     }
 
     setFilteredProperties(filtered);
@@ -129,7 +147,24 @@ export default function MapListingsLayout({
 
   // Handle filter changes
   const handleFilterChange = (newFilters: FilterOptions) => {
-    updateFilters(newFilters);
+    // Convert FilterOptions to PropertySearchParams format
+    const searchParams: PropertySearchParams = {
+      propertyType: newFilters.propertyType,
+      city: newFilters.city,
+      location: newFilters.city, // Map city to location for backward compatibility
+      minPrice: newFilters.minPrice,
+      maxPrice: newFilters.maxPrice,
+      priceMin: newFilters.minPrice, // Support both formats
+      priceMax: newFilters.maxPrice,
+      minSize: newFilters.minSize,
+      maxSize: newFilters.maxSize,
+      beds: newFilters.beds,
+      baths: newFilters.baths,
+      sortBy: newFilters.sortBy,
+      sortOrder: newFilters.sortOrder
+    };
+    
+    setFilters(searchParams);
     setCurrentPage(1);
   };
 
@@ -142,7 +177,7 @@ export default function MapListingsLayout({
   // Handle pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    updatePagination({ ...pagination, page });
+    // Update pagination in context if needed
   };
 
   // Handle property selection for map
@@ -241,8 +276,8 @@ export default function MapListingsLayout({
   }
 
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${className}`}>
-      {/* Left Column - Filters and Property List */}
+    <div className={`grid grid-cols-1 gap-8 ${className}`}>
+      {/* Property List Section */}
       <div className="space-y-6">
         {/* Filters */}
         {showFilters && (
@@ -268,14 +303,13 @@ export default function MapListingsLayout({
             message="No properties match your criteria" 
             onReset={() => {
               setSearchQuery('');
-              updateFilters({});
+              setFilters({});
               setCurrentPage(1);
             }}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {currentProperties.map((property) => {
-              // Validate property object with normalized structure
               if (!isValidProperty(property)) {
                 console.warn('Invalid property object:', property);
                 return null;
@@ -313,20 +347,6 @@ export default function MapListingsLayout({
             />
           </div>
         )}
-      </div>
-
-      {/* Right Column - Map */}
-      <div className="lg:sticky lg:top-4 h-[600px]">
-        <div className="w-full h-full">
-          <PropertyMap
-            properties={currentProperties}
-            selectedPropertyId={selectedPropertyId}
-            hoveredPropertyId={hoveredPropertyId}
-            onPropertySelect={handlePropertySelect}
-            onPropertyHover={handlePropertyCardHover}
-            className="w-full h-full rounded-lg"
-          />
-        </div>
       </div>
     </div>
   );

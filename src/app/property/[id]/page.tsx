@@ -31,10 +31,17 @@ export default function PropertyDetailsPage() {
         setError(null);
         const response = await propertiesApi.getPropertyById(propertyId);
         
-        if (response.success && response.data) {
+        // Handle the API response structure properly
+        if (response && response.success && response.data) {
           setProperty(response.data);
+        } else if (response && response.data && !response.success) {
+          // Handle case where response.data exists but success is false
+          setError(response.message || 'Property not found');
+        } else if (response && typeof response === 'object' && response.id) {
+          // Handle case where response is the property object directly
+          setProperty(response);
         } else {
-          setError(response.message || 'Failed to load property details');
+          setError('Property not found');
         }
       } catch (err) {
         console.error('Error fetching property:', err);
@@ -172,7 +179,7 @@ export default function PropertyDetailsPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-3">Features</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {property.features.map((feature, index) => (
-                  <div key={index} className="bg-blue-50 text-blue-800 px-3 py-1 rounded-full text-sm">
+                  <div key={`feature-${feature}-${index}`} className="bg-blue-50 text-blue-800 px-3 py-1 rounded-full text-sm">
                     {feature}
                   </div>
                 ))}

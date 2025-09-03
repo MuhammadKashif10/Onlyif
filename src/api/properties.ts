@@ -71,36 +71,30 @@ export const propertiesApi = {
   },
 
   // Add new function to fetch property by ID
-  async getPropertyById(id: string): Promise<ApiResponse<Property>> {
+  async getPropertyById(id: string): Promise<any> {
     try {
-      console.log('🔍 Fetching property by ID:', id);
+      const response = await apiClient.get(`/properties/${id}`);
       
-      const response = await fetch(`${this.baseUrl}/properties/${id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.getAuthHeaders()
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      // Ensure consistent response structure
+      if (response.data) {
+        return {
+          success: true,
+          data: response.data,
+          message: 'Property fetched successfully'
+        };
+      } else {
+        return {
+          success: false,
+          data: null,
+          message: 'Property not found'
+        };
       }
-
-      const data = await response.json();
-      console.log('✅ Property fetched successfully:', data);
-      
-      return {
-        success: true,
-        data: data.data || data,
-        message: 'Property fetched successfully'
-      };
     } catch (error) {
-      console.error('❌ Error fetching property by ID:', error);
+      console.error('Error fetching property by ID:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch property'
+        data: null,
+        message: 'Failed to fetch property details'
       };
     }
   },

@@ -53,7 +53,20 @@ const seedData = async () => {
         role: 'agent',
         termsAccepted: true,
         termsAcceptedAt: new Date(),
-        termsVersion: '1.0'
+        termsVersion: '1.0',
+        agentProfile: {
+          phone: '+15550101',
+          brokerage: 'Premier Real Estate Group',
+          yearsOfExperience: 8,
+          specializations: ['residential', 'luxury'],
+          serviceAreas: [{
+            city: 'Austin',
+            state: 'TX',
+            zipCodes: ['78701', '78702', '78703']
+          }],
+          bio: 'Experienced real estate agent specializing in residential and luxury properties with over 8 years in the Austin market.',
+          languages: ['English', 'Spanish']
+        }
       },
       {
         name: 'Michael Chen',
@@ -62,7 +75,20 @@ const seedData = async () => {
         role: 'agent',
         termsAccepted: true,
         termsAcceptedAt: new Date(),
-        termsVersion: '1.0'
+        termsVersion: '1.0',
+        agentProfile: {
+          phone: '+15550102',
+          brokerage: 'Austin Property Solutions',
+          yearsOfExperience: 12,
+          specializations: ['commercial', 'investment'],
+          serviceAreas: [{
+            city: 'Austin',
+            state: 'TX',
+            zipCodes: ['78704', '78705', '78706']
+          }],
+          bio: 'Commercial real estate specialist with 12 years of experience helping clients with investment properties and commercial transactions.',
+          languages: ['English', 'Mandarin']
+        }
       }
     ];
 

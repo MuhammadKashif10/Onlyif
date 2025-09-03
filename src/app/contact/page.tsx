@@ -64,51 +64,10 @@ export default function ContactPage() {
         primaryCtaText="Call Us Now"
         primaryCtaHref="tel:1-800-ONLYIF"
         secondaryCtaText="Email Support"
-        secondaryCtaHref="mailto:support@onlyif.com"
+        secondaryCtaHref="mailto:hello@onlyif.com.au"
       />
 
-      {/* Contact Methods */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Multiple Ways to Reach Us
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Choose the contact method that works best for you. Our team is standing by to help.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {contactMethods.map((method, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md p-6 text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  {/* Icon placeholder */}
-                  <div className="w-6 h-6 bg-blue-600 rounded"></div>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {method.name}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {method.description}
-                </p>
-                <div className="space-y-2">
-                  <p className="font-medium text-gray-900">
-                    {method.phone}
-                  </p>
-                  <p className="text-blue-600">
-                    {method.email}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {method.hours}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      
       {/* Contact Form */}
       <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -122,55 +81,6 @@ export default function ContactPage() {
           </div>
           
           <ContactForm />
-        </div>
-      </section>
-
-      {/* Office Locations */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Our Offices
-            </h2>
-            <p className="text-lg text-gray-600">
-              Visit us at one of our convenient locations.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Austin Headquarters
-              </h3>
-              <div className="space-y-2 text-gray-600">
-                <p>123 Real Estate Ave</p>
-                <p>Austin, TX 78701</p>
-                <p className="font-medium text-gray-900">1-800-ONLYIF</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Dallas Office
-              </h3>
-              <div className="space-y-2 text-gray-600">
-                <p>456 Commerce St</p>
-                <p>Dallas, TX 75201</p>
-                <p className="font-medium text-gray-900">1-800-ONLYIF</p>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Houston Office
-              </h3>
-              <div className="space-y-2 text-gray-600">
-                <p>789 Business Blvd</p>
-                <p>Houston, TX 77002</p>
-                <p className="font-medium text-gray-900">1-800-ONLYIF</p>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

@@ -111,10 +111,10 @@ export default function HomePage() {
       
       {/* Hero Section */}
       <HeroSection
-        headline="Buy and sell homes with confidence"
-        subheadline="OnlyIf makes real estate simple, transparent, and stress-free. Get a cash offer in 24 hours or find your perfect home."
-        primaryCtaText="Get Cash Offer"
-        primaryCtaHref="/sell/get-offer"
+        headline="Your Home. Your Rules. Your Price."
+        subheadline="Take control of your real estate journey with OnlyIf. Whether you're buying your dream home or selling on your terms, we put the power in your hands. Set your price, choose your timeline, and make decisions that work for you."
+        primaryCtaText="Register as Buyer"
+        primaryCtaHref="/register?type=buyer"
         secondaryCtaText="Browse Homes"
         secondaryCtaHref="/browse"
         onPrimaryCtaClick={handlePrimaryCtaClick}

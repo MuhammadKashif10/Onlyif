@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { USE_MOCKS } from '@/utils/mockWrapper';
+import { apiClient } from '@/lib/api-client';
 
 // Mock agents data
 const mockAgents = [
@@ -193,15 +194,42 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Return empty array when not using mocks
-    return NextResponse.json({
-      success: true,
-      data: [],
-      total: 0,
-      page,
-      limit,
-      totalPages: 0
-    });
+    // Fetch real data from backend database
+    try {
+      const queryParams = new URLSearchParams();
+      if (office) queryParams.append('office', office);
+      if (specialization) queryParams.append('specialization', specialization);
+      if (search) queryParams.append('search', search);
+      queryParams.append('limit', limit.toString());
+      queryParams.append('page', page.toString());
+      
+      const queryString = queryParams.toString();
+      const endpoint = `/agents${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await apiClient.get(endpoint);
+      
+      return NextResponse.json({
+        success: true,
+        data: response.data || response,
+        total: response.total || (response.data ? response.data.length : 0),
+        page,
+        limit,
+        totalPages: response.totalPages || Math.ceil((response.total || 0) / limit)
+      });
+    } catch (backendError) {
+      console.error('Backend API error:', backendError);
+      
+      // Fallback to empty response if backend is unavailable
+      return NextResponse.json({
+        success: true,
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+        message: 'Backend temporarily unavailable'
+      });
+    }
     
   } catch (error) {
     console.error('Error fetching agents:', error);

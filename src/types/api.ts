@@ -85,8 +85,27 @@ export interface FilterOptions {
   beds?: number;
   baths?: number;
   sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
+// Add PropertySearchParams interface
+export interface PropertySearchParams {
+  propertyType?: string;
+  location?: string;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  priceMin?: number;
+  priceMax?: number;
+  minSize?: number;
+  maxSize?: number;
+  beds?: number;
+  baths?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
 export interface PaginationOptions {
   page?: number;
   limit?: number;

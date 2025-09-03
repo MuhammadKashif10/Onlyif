@@ -30,6 +30,7 @@ const termsRoutes = require('./routes/termsRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
 const buyerRoutes = require('./routes/buyerRoutes');
 const agentRoutes = require('./routes/agentRoutes');
+const agentsRoutes = require('./routes/agentsRoutes'); // Add this line
 
 // Connect to database
 connectDB();
@@ -92,6 +93,7 @@ app.use('/api/terms', termsRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/agents', agentsRoutes); // Add this line
 app.use('/api/cash-offers', require('./routes/cashOfferRoutes'));
 
 // Catch all handler
