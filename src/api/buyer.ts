@@ -38,11 +38,45 @@ export interface ActiveOffer {
   expiresAt?: string;
 }
 
+export interface SavedSearch {
+  _id: string;
+  name: string;
+  searchCriteria: {
+    location?: {
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    };
+    priceRange?: {
+      min?: number;
+      max?: number;
+    };
+    propertyType?: string[];
+    bedrooms?: {
+      min?: number;
+      max?: number;
+    };
+    bathrooms?: {
+      min?: number;
+      max?: number;
+    };
+  };
+  alertSettings: {
+    emailAlerts: boolean;
+    pushNotifications: boolean;
+    frequency: string;
+  };
+  matchCount: number;
+  createdAt: string;
+}
+
 export interface BuyerStats {
   savedProperties: number;
   viewedProperties: number;
   scheduledViewings: number;
   activeOffers: number;
+  savedSearches: number;
+  unreadNotifications: number;
 }
 
 // Buyer API functions
@@ -311,7 +345,128 @@ export const buyerApi = {
       console.warn('Error fetching recent activity, using empty array:', error);
       return [];
     }
-  }
+  },
+
+  // Get saved searches
+  async getSavedSearches(): Promise<{ success: boolean; data: SavedSearch[] }> {
+    try {
+      const response = await apiClient.get('/buyer/saved-searches');
+      return response.data || { success: false, data: [] };
+    } catch (error) {
+      console.warn('Error fetching saved searches:', error);
+      return { success: false, data: [] };
+    }
+  },
+
+  // Create saved search
+  async createSavedSearch(searchData: Omit<SavedSearch, '_id' | 'createdAt' | 'matchCount'>): Promise<{ success: boolean; data?: SavedSearch }> {
+    try {
+      const response = await apiClient.post('/buyer/saved-searches', searchData);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error creating saved search:', error);
+      return { success: false };
+    }
+  },
+
+  // Update saved search
+  async updateSavedSearch(searchId: string, searchData: Partial<SavedSearch>): Promise<{ success: boolean; data?: SavedSearch }> {
+    try {
+      const response = await apiClient.put(`/buyer/saved-searches/${searchId}`, searchData);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error updating saved search:', error);
+      return { success: false };
+    }
+  },
+
+  // Delete saved search
+  async deleteSavedSearch(searchId: string): Promise<{ success: boolean }> {
+    try {
+      const response = await apiClient.delete(`/buyer/saved-searches/${searchId}`);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error deleting saved search:', error);
+      return { success: false };
+    }
+  },
+
+  // Execute saved search
+  async executeSavedSearch(searchId: string): Promise<{ success: boolean; data?: { totalMatches: number; properties: Property[] } }> {
+    try {
+      const response = await apiClient.post(`/buyer/saved-searches/${searchId}/execute`);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error executing saved search:', error);
+      return { success: false };
+    }
+  },
+
+  // Get recommendations
+  async getRecommendations(): Promise<{ success: boolean; data: Property[] }> {
+    try {
+      const response = await apiClient.get('/buyer/recommendations');
+      return response.data || { success: false, data: [] };
+    } catch (error) {
+      console.warn('Error fetching recommendations:', error);
+      return { success: false, data: [] };
+    }
+  },
+
+  // Get buyer profile
+  async getProfile(): Promise<{ success: boolean; data?: any }> {
+    try {
+      const response = await apiClient.get('/buyer/profile');
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error fetching buyer profile:', error);
+      return { success: false };
+    }
+  },
+
+  // Update buyer profile
+  async updateProfile(profileData: any): Promise<{ success: boolean; data?: any }> {
+    try {
+      const response = await apiClient.put('/buyer/profile', profileData);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error updating buyer profile:', error);
+      return { success: false };
+    }
+  },
+
+  // Get notifications
+  async getNotifications(): Promise<{ success: boolean; data: any[] }> {
+    try {
+      const response = await apiClient.get('/buyer/notifications');
+      return response.data || { success: false, data: [] };
+    } catch (error) {
+      console.warn('Error fetching notifications:', error);
+      return { success: false, data: [] };
+    }
+  },
+
+  // Mark notification as read
+  async markNotificationRead(notificationId: string): Promise<{ success: boolean }> {
+    try {
+      const response = await apiClient.put(`/buyer/notifications/${notificationId}/read`);
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error marking notification as read:', error);
+      return { success: false };
+    }
+  },
+
+  // Get dashboard stats
+  async getDashboardStats(): Promise<{ success: boolean; data?: any }> {
+    try {
+      const response = await apiClient.get('/buyer/dashboard-stats');
+      return response.data || { success: false };
+    } catch (error) {
+      console.warn('Error fetching dashboard stats:', error);
+      return { success: false };
+    }
+  },
 };
 
 export default buyerApi;

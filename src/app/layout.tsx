@@ -8,6 +8,7 @@ import "./globals.css";
 import "../styles/custom.css"; // Uncomment this line
 import { AuthProvider } from "@/context/AuthContext";
 import { PropertyProvider } from "@/context/PropertyContext";
+import { BuyerProvider } from '@/context/BuyerContext';
 import Footer from "@/components/layout/Footer";
 
 const inter = Inter({
@@ -168,18 +169,20 @@ export default function RootLayout({
       <body className="antialiased font-sans text-black">
         <AuthProvider>
           <PropertyProvider>
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded z-50">
-              Skip to main content
-            </a>
-            <main id="main-content">
-              {children}
-            </main>
-            <Footer 
-              logo="/logo.svg"
-              logoText=""
-              description="Sell your home in days, not months. Get a competitive cash offer in 24 hours with no obligation."
-              copyrightText="© 2025 OnlyIf. All rights reserved."
-            />
+            <BuyerProvider>
+              <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded z-50">
+                Skip to main content
+              </a>
+              <main id="main-content">
+                {children}
+              </main>
+              <Footer 
+                logo="/logo.svg"
+                logoText=""
+                description="Sell your home in days, not months. Get a competitive cash offer in 24 hours with no obligation."
+                copyrightText="© 2025 OnlyIf. All rights reserved."
+              />
+            </BuyerProvider>
           </PropertyProvider>
         </AuthProvider>
       </body>

@@ -114,7 +114,7 @@ export default function HomePage() {
         headline="Your Home. Your Rules. Your Price."
         subheadline="Take control of your real estate journey with OnlyIf. Whether you're buying your dream home or selling on your terms, we put the power in your hands. Set your price, choose your timeline, and make decisions that work for you."
         primaryCtaText="Register as Buyer"
-        primaryCtaHref="/register?type=buyer"
+        primaryCtaHref="/buy/onboard"
         secondaryCtaText="Browse Homes"
         secondaryCtaHref="/browse"
         onPrimaryCtaClick={handlePrimaryCtaClick}

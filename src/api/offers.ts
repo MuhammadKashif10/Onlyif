@@ -41,60 +41,8 @@ export interface OfferResponse {
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock offers data
-const mockOffers = [
-  {
-    id: 'offer-1',
-    propertyId: '1',
-    propertyTitle: 'Modern Downtown Condo',
-    buyerId: 'buyer-1',
-    buyerName: 'John Smith',
-    buyerEmail: 'john.smith@email.com',
-    agentId: 'agent-1',
-    agentName: 'Sarah Johnson',
-    offerAmount: 425000,
-    listingPrice: 450000,
-    earnestMoney: 5000,
-    closingDate: '2024-03-15',
-    inspectionPeriod: 10,
-    financingType: 'conventional',
-    contingencies: ['inspection', 'financing', 'appraisal'],
-    status: 'pending',
-    submittedAt: '2024-01-20T14:30:00Z',
-    expiresAt: '2024-01-22T14:30:00Z',
-    notes: 'Motivated buyer, pre-approved for financing',
-    counterOffers: []
-  },
-  {
-    id: 'offer-2',
-    propertyId: '2',
-    propertyTitle: 'Spacious Family Home',
-    buyerId: 'buyer-2',
-    buyerName: 'Emily Davis',
-    buyerEmail: 'emily.davis@email.com',
-    agentId: 'agent-2',
-    agentName: 'Michael Chen',
-    offerAmount: 740000,
-    listingPrice: 750000,
-    earnestMoney: 10000,
-    closingDate: '2024-04-01',
-    inspectionPeriod: 14,
-    financingType: 'conventional',
-    contingencies: ['inspection', 'financing'],
-    status: 'accepted',
-    submittedAt: '2024-01-18T09:15:00Z',
-    expiresAt: '2024-01-20T09:15:00Z',
-    notes: 'Cash backup available if financing falls through',
-    counterOffers: [
-      {
-        id: 'counter-1',
-        amount: 745000,
-        submittedAt: '2024-01-18T16:30:00Z',
-        status: 'accepted'
-      }
-    ]
-  }
-];
+// Mock offers data - removed all mock agents
+const mockOffers: OfferResponse[] = [];
 
 export const offersApi = {
   // Get all offers for a property

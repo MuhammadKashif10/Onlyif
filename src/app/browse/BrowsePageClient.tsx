@@ -99,12 +99,6 @@ export default function BrowsePageClient() {
       <Navbar
         logo="/logo.svg"
         logoText=""
-        navigationItems={[
-          { label: 'Buy', href: '/browse', isActive: true },
-          { label: 'Sell', href: '/sell', isActive: false },
-          { label: 'How It Works', href: '/how-it-works', isActive: false },
-          { label: 'About', href: '/about', isActive: false },
-        ]}
         ctaText="Get Started"
         ctaHref="/signin"
       />

@@ -51,15 +51,21 @@ class ApiClient {
         ...options.headers,
       };
   
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const fullUrl = `${this.baseURL}${endpoint}`;
+      console.log('🌐 Making request to:', fullUrl);
+      
+      const response = await fetch(fullUrl, {
         ...options,
         headers,
       });
   
+      console.log('📡 Response status:', response.status, response.statusText);
+      
       let data;
       try {
         data = await response.json();
-      } catch {
+      } catch (jsonError) {
+        console.error('❌ Failed to parse JSON response:', jsonError);
         data = {};
       }
   
@@ -81,14 +87,31 @@ class ApiClient {
         const error = new Error(data.message || `API request failed with status ${response.status}`);
         (error as any).status = response.status;
         (error as any).statusText = response.statusText;
+        (error as any).url = fullUrl;
         
-        console.error(`API Error: ${error.message}`, { endpoint, status: response.status });
+        console.error(`🚨 API Error: ${error.message}`, { endpoint, status: response.status, url: fullUrl });
         throw error;
       }
   
       // Transform backend response to frontend format
       return this.transformResponse(data);
     } catch (error) {
+      // Enhanced error logging
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('🔥 Network Error - Backend might be down or CORS issue:', {
+          endpoint,
+          baseURL: this.baseURL,
+          fullUrl: `${this.baseURL}${endpoint}`,
+          error: error.message
+        });
+        
+        // Create a more descriptive error
+        const networkError = new Error(`Network error: Cannot connect to backend at ${this.baseURL}${endpoint}. Please check if the backend server is running.`);
+        (networkError as any).isNetworkError = true;
+        (networkError as any).endpoint = endpoint;
+        throw networkError;
+      }
+      
       // For 404s on buyer endpoints, return empty data instead of re-throwing
       if ((error as any).status === 404 && endpoint.includes('/buyer/')) {
         console.debug(`Handling 404 for buyer endpoint: ${endpoint} - returning empty data`);
@@ -104,7 +127,7 @@ class ApiClient {
       // Re-throw with additional context for other errors
       if (error instanceof Error) {
         (error as any).endpoint = endpoint;
-        console.error(`API Request failed:`, error);
+        console.error(`💥 API Request failed:`, error);
       }
       throw error;
     }

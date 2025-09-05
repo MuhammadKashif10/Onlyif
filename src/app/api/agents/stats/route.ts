@@ -1,50 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { USE_MOCKS } from '@/utils/mockWrapper';
 
-// GET /api/agents/stats - Get agent statistics
+// GET /api/agents/stats - Get general agent statistics
 export async function GET(request: NextRequest) {
   try {
-    if (USE_MOCKS) {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 400));
-      
-      const stats = {
-        totalAgents: 6,
-        totalPropertiesSold: 1197,
-        averageRating: 4.8,
-        averageDaysOnMarket: 11,
-        totalReviews: 876,
-        activeListings: 234,
-        closedDealsThisMonth: 45,
-        topPerformingOffice: "Austin Downtown"
-      };
-      
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/agents/stats`;
+    
+    console.log('🔗 Fetching agent stats from backend:', backendUrl);
+    
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) {
+      console.error('❌ Backend API error:', response.status);
       return NextResponse.json({
-        success: true,
-        data: stats
-      });
+        success: false,
+        error: `Backend API error: ${response.status}`,
+        data: {
+          totalAgents: 0,
+          totalPropertiesSold: 0,
+          averageRating: 0
+        }
+      }, { status: response.status });
     }
     
-    // Return empty/default stats when not using mocks
-    return NextResponse.json({
-      success: true,
+    const result = await response.json();
+    
+    // Transform the backend stats to match frontend expectations
+    const transformedStats = {
+      success: result.success,
       data: {
-        totalAgents: 0,
-        totalPropertiesSold: 0,
-        averageRating: 0,
-        averageDaysOnMarket: 0,
-        totalReviews: 0,
-        activeListings: 0,
-        closedDealsThisMonth: 0,
-        topPerformingOffice: ""
-      }
-    });
+        totalAgents: result.data.totalAgents || 0,
+        totalPropertiesSold: result.data.totalProperties || 0,
+        averageRating: 4.8 // Mock average rating
+      },
+      message: result.message
+    };
+    
+    return NextResponse.json(transformedStats);
     
   } catch (error) {
     console.error('Error fetching agent stats:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to connect to backend',
+      data: {
+        totalAgents: 0,
+        totalPropertiesSold: 0,
+        averageRating: 0
+      }
+    }, { status: 500 });
   }
 }

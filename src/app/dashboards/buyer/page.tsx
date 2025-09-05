@@ -3,214 +3,120 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Navbar } from '@/components';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { buyerApi, type BuyerStats } from '@/api/buyer';
-import { 
-  Home, 
-  Heart, 
-  Eye, 
-  Calendar, 
-  DollarSign, 
-  MessageSquare, 
-  Search, 
-  Bell,
-  Clock,
-  MapPin,
-  Bath,
-  Bed,
-  Square
-} from 'lucide-react';
+import { useBuyer } from '@/context/BuyerContext';
+import Navbar from '@/components/layout/Navbar';
+import BuyerProfileSection from '@/components/buyer/BuyerProfileSection';
+import NotificationsPanel from '@/components/buyer/NotificationsPanel';
+import SavedSearchesSection from '@/components/buyer/SavedSearchesSection';
+import RecommendationsSection from '@/components/buyer/RecommendationsSection';
+import { Bell, Heart, Search, Eye, Calendar, DollarSign } from 'lucide-react';
+
+interface DashboardStats {
+  savedProperties: number;
+  viewedProperties: number;
+  savedSearches: number;
+  unreadNotifications: number;
+}
 
 export default function BuyerDashboard() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [buyerStats, setBuyerStats] = useState<BuyerStats>({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
-  const [savedProperties, setSavedProperties] = useState<any[]>([]);
-  const [viewedProperties, setViewedProperties] = useState<any[]>([]);
-  const [scheduledViewings, setScheduledViewings] = useState<any[]>([]);
-  const [activeOffers, setActiveOffers] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const { 
+    savedProperties, 
+    viewedProperties, 
+    scheduledViewings, 
+    activeOffers,
+    recentActivity,
+    loading,
+    error,
+    fetchBuyerData
+  } = useBuyer();
+  
+  const [stats, setStats] = useState<DashboardStats>({
+    savedProperties: 0,
+    viewedProperties: 0,
+    savedSearches: 0,
+    unreadNotifications: 0
+  });
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    // Don't load data if still checking auth or no user
-    if (authLoading) return;
-    
-    if (!user) {
+    if (!authLoading && !user) {
       router.push('/signin');
       return;
     }
 
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Load buyer stats with fallback
-        try {
-          const stats = await buyerApi.getBuyerStats();
-          setBuyerStats(stats || { savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
-        } catch (err) {
-          console.error('Failed to load buyer stats:', err);
-          setBuyerStats({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
-        }
+    if (user && user.role !== 'buyer') {
+      router.push('/signin');
+      return;
+    }
 
-        // Load saved properties with fallback
-        try {
-          const savedPropsResponse = await buyerApi.getSavedProperties({ limit: 6 });
-          if (savedPropsResponse?.properties?.length > 0) {
-            setSavedProperties(savedPropsResponse.properties.map(p => ({
-              id: p.id,
-              title: p.property?.title || 'Untitled Property',
-              price: p.property?.price || 0,
-              location: p.property?.location || 'Location not specified',
-              bedrooms: p.property?.bedrooms || 0,
-              bathrooms: p.property?.bathrooms || 0,
-              sqft: p.property?.sqft || 0,
-              image: p.property?.images?.[0] || '/api/placeholder/300/200',
-              savedAt: p.savedAt
-            })));
-          } else {
-            setSavedProperties([]);
-          }
-        } catch (err) {
-          console.error('Failed to load saved properties:', err);
-          setSavedProperties([]);
-        }
+    if (user) {
+      fetchBuyerData();
+      fetchDashboardStats();
+    }
+  }, [user, authLoading]);
 
-        // Load viewed properties with fallback
-        try {
-          const viewedPropsResponse = await buyerApi.getViewedProperties({ limit: 6 });
-          if (viewedPropsResponse?.properties?.length > 0) {
-            setViewedProperties(viewedPropsResponse.properties.map(p => ({
-              id: p.id,
-              title: p.property?.title || 'Untitled Property',
-              price: p.property?.price || 0,
-              location: p.property?.location || 'Location not specified',
-              bedrooms: p.property?.bedrooms || 0,
-              bathrooms: p.property?.bathrooms || 0,
-              sqft: p.property?.sqft || 0,
-              image: p.property?.images?.[0] || '/api/placeholder/300/200',
-              viewedAt: p.viewedAt,
-              viewCount: p.viewCount || 1
-            })));
-          } else {
-            setViewedProperties([]);
-          }
-        } catch (err) {
-          console.error('Failed to load viewed properties:', err);
-          setViewedProperties([]);
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/buyer/dashboard-stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-
-        // Load scheduled viewings with fallback
-        try {
-          const viewingsResponse = await buyerApi.getScheduledViewings({ limit: 6 });
-          setScheduledViewings(viewingsResponse?.viewings || []);
-        } catch (err) {
-          console.error('Failed to load scheduled viewings:', err);
-          setScheduledViewings([]);
-        }
-
-        // Load active offers with fallback
-        try {
-          const offersResponse = await buyerApi.getActiveOffers({ limit: 6 });
-          setActiveOffers(offersResponse?.offers || []);
-        } catch (err) {
-          console.error('Failed to load active offers:', err);
-          setActiveOffers([]);
-        }
-
-        // Load recent activity with fallback
-        try {
-          const activity = await buyerApi.getRecentActivity(5);
-          setRecentActivity(activity || []);
-        } catch (err) {
-          console.error('Failed to load recent activity:', err);
-          setRecentActivity([]);
-        }
-
-      } catch (err) {
-        console.error('Dashboard loading error:', err);
-        setError('Failed to load dashboard data. Please try refreshing the page.');
-        // Set empty defaults
-        setBuyerStats({ savedProperties: 0, viewedProperties: 0, scheduledViewings: 0, activeOffers: 0 });
-        setSavedProperties([]);
-        setViewedProperties([]);
-        setScheduledViewings([]);
-        setActiveOffers([]);
-        setRecentActivity([]);
-      } finally {
-        setLoading(false);
+      });
+      const data = await response.json();
+      if (data.success) {
+        setStats(data.data);
       }
-    };
-
-    loadDashboardData();
-  }, [user, authLoading, router]);
-
-  const handleViewAllSaved = () => {
-    router.push('/dashboards/buyer/saved-properties');
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
   };
 
-  const handleViewAllViewed = () => {
-    router.push('/dashboards/buyer/viewed-properties');
+  const handleViewAll = (section: string) => {
+    switch (section) {
+      case 'saved':
+        router.push('/buyer/saved-properties');
+        break;
+      case 'viewed':
+        router.push('/buyer/viewed-properties');
+        break;
+      case 'viewings':
+        router.push('/buyer/scheduled-viewings');
+        break;
+      case 'offers':
+        router.push('/buyer/active-offers');
+        break;
+      default:
+        break;
+    }
   };
 
-  const handleViewAllViewings = () => {
-    router.push('/dashboards/buyer/scheduled-viewings');
-  };
-
-  const handleViewAllOffers = () => {
-    router.push('/dashboards/buyer/active-offers');
-  };
-
-  // Show loading while checking authentication
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  // Redirect to login if no user
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Please log in to access your dashboard.</p>
-          <Button onClick={() => router.push('/signin')}>Login</Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  // Show loading while fetching dashboard data
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -219,289 +125,321 @@ export default function BuyerDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Buyer Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back, {user.name}! Here's your property search overview.</p>
+        {/* Header with Notifications */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Buyer Dashboard</h1>
+            <p className="text-gray-600 mt-1">Welcome back, {user.name}! Here's your property search overview.</p>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {/* Notifications Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+              >
+                <Bell className="h-6 w-6" />
+                {stats.unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {stats.unreadNotifications > 9 ? '9+' : stats.unreadNotifications}
+                  </span>
+                )}
+              </button>
+            </div>
+            
+            {/* Profile Button */}
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              My Profile
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Saved Properties</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{buyerStats.savedProperties}</div>
-              <p className="text-xs text-muted-foreground">Properties you've saved</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Heart className="h-8 w-8 text-red-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Saved Properties</p>
+                <p className="text-2xl font-semibold text-gray-900">{savedProperties?.length || 0}</p>
+                <p className="text-sm text-gray-500">Properties you've saved</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Viewed Properties</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{buyerStats.viewedProperties}</div>
-              <p className="text-xs text-muted-foreground">Properties you've viewed</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Eye className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Viewed Properties</p>
+                <p className="text-2xl font-semibold text-gray-900">{viewedProperties?.length || 0}</p>
+                <p className="text-sm text-gray-500">Properties you've viewed</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Scheduled Viewings</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{buyerStats.scheduledViewings}</div>
-              <p className="text-xs text-muted-foreground">Upcoming viewings</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Calendar className="h-8 w-8 text-green-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Scheduled Viewings</p>
+                <p className="text-2xl font-semibold text-gray-900">{scheduledViewings?.length || 0}</p>
+                <p className="text-sm text-gray-500">Upcoming viewings</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{buyerStats.activeOffers}</div>
-              <p className="text-xs text-muted-foreground">Pending offers</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DollarSign className="h-8 w-8 text-yellow-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Active Offers</p>
+                <p className="text-2xl font-semibold text-gray-900">{activeOffers?.length || 0}</p>
+                <p className="text-sm text-gray-500">Pending offers</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
+          {/* Left Column - Main Sections */}
           <div className="lg:col-span-2 space-y-8">
             {/* Saved Properties */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Heart className="h-5 w-5" />
-                    Saved Properties
-                  </CardTitle>
-                  <CardDescription>Properties you've marked as favorites</CardDescription>
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center">
+                  <Heart className="h-5 w-5 text-red-500 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">Saved Properties</h2>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleViewAllSaved}>
+                <button 
+                  onClick={() => handleViewAll('saved')}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
                   View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {savedProperties.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Heart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2">No saved properties yet</p>
-                    <p className="text-sm text-gray-400">Start browsing properties and save your favorites!</p>
-                    <Button className="mt-4" onClick={() => router.push('/browse')}>
-                      Browse Properties
-                    </Button>
-                  </div>
-                ) : (
+                </button>
+              </div>
+              <div className="p-6">
+                {savedProperties && savedProperties.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {savedProperties.slice(0, 4).map((property) => (
-                      <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div key={property._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                         <img 
-                          src={property.image} 
+                          src={property.images?.[0] || '/images/placeholder.jpg'} 
                           alt={property.title}
                           className="w-full h-32 object-cover rounded mb-3"
                         />
-                        <h4 className="font-semibold text-sm mb-1">{property.title}</h4>
-                        <p className="text-lg font-bold text-blue-600 mb-1">${property.price.toLocaleString()}</p>
-                        <p className="text-xs text-gray-500 mb-2">{property.location}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Bed className="h-3 w-3" />
-                            {property.bedrooms}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Bath className="h-3 w-3" />
-                            {property.bathrooms}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Square className="h-3 w-3" />
-                            {property.sqft}
-                          </span>
-                        </div>
+                        <h3 className="font-medium text-gray-900 mb-1">{property.title}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{property.address}</p>
+                        <p className="text-lg font-semibold text-blue-600">${property.price?.toLocaleString()}</p>
                       </div>
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recently Viewed */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Eye className="h-5 w-5" />
-                    Recently Viewed
-                  </CardTitle>
-                  <CardDescription>Properties you've recently looked at</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleViewAllViewed}>
-                  View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {viewedProperties.length === 0 ? (
+                ) : (
                   <div className="text-center py-8">
-                    <Eye className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-2">No viewed properties yet</p>
-                    <p className="text-sm text-gray-400">Start exploring properties to see your viewing history!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {viewedProperties.slice(0, 3).map((property) => (
-                      <div key={property.id} className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50">
-                        <img 
-                          src={property.image} 
-                          alt={property.title}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-sm">{property.title}</h4>
-                          <p className="text-blue-600 font-bold">${property.price.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">{property.location}</p>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          Viewed {property.viewCount} time{property.viewCount !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    ))}
+                    <Heart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No saved properties yet</h3>
+                    <p className="text-gray-600 mb-4">Start browsing properties and save your favorites!</p>
+                    <button 
+                      onClick={() => router.push('/browse')}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                      Browse Properties
+                    </button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
 
-          {/* Right Column */}
-          <div className="space-y-8">
             {/* Scheduled Viewings */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Scheduled Viewings
-                  </CardTitle>
-                  <CardDescription>Your upcoming property visits</CardDescription>
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center">
+                  <Calendar className="h-5 w-5 text-green-500 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">Scheduled Viewings</h2>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleViewAllViewings}>
+                <button 
+                  onClick={() => handleViewAll('viewings')}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
                   View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {scheduledViewings.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 text-sm mb-1">No scheduled viewings</p>
-                    <p className="text-xs text-gray-400">Book a viewing when you find a property you like!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
+                </button>
+              </div>
+              <div className="p-6">
+                {scheduledViewings && scheduledViewings.length > 0 ? (
+                  <div className="space-y-4">
                     {scheduledViewings.slice(0, 3).map((viewing) => (
-                      <div key={viewing.id} className="border rounded-lg p-3">
-                        <h4 className="font-semibold text-sm mb-1">{viewing.property.title}</h4>
-                        <p className="text-xs text-gray-600 mb-2">{viewing.property.location}</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Clock className="h-3 w-3" />
-                            {viewing.scheduledDate} at {viewing.scheduledTime}
-                          </div>
-                          <Badge variant={viewing.status === 'scheduled' ? 'default' : 'secondary'}>
+                      <div key={viewing._id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h3 className="font-medium text-gray-900">{viewing.property?.title}</h3>
+                          <p className="text-sm text-gray-600">{viewing.property?.address}</p>
+                          <p className="text-sm text-blue-600">{new Date(viewing.scheduledDate).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">{viewing.timeSlot}</p>
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            viewing.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            viewing.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
                             {viewing.status}
-                          </Badge>
+                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No scheduled viewings</h3>
+                    <p className="text-gray-600 mb-4">Book a viewing when you find a property you like!</p>
+                    <button 
+                      onClick={() => router.push('/browse')}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    >
+                      Find Properties
+                    </button>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Active Offers */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Active Offers
-                  </CardTitle>
-                  <CardDescription>Your pending property offers</CardDescription>
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center">
+                  <DollarSign className="h-5 w-5 text-yellow-500 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">Active Offers</h2>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleViewAllOffers}>
+                <button 
+                  onClick={() => handleViewAll('offers')}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
                   View All
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {activeOffers.length === 0 ? (
-                  <div className="text-center py-6">
-                    <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 text-sm mb-1">No active offers</p>
-                    <p className="text-xs text-gray-400">Make an offer on a property you're interested in!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
+                </button>
+              </div>
+              <div className="p-6">
+                {activeOffers && activeOffers.length > 0 ? (
+                  <div className="space-y-4">
                     {activeOffers.slice(0, 3).map((offer) => (
-                      <div key={offer.id} className="border rounded-lg p-3">
-                        <h4 className="font-semibold text-sm mb-1">{offer.property.title}</h4>
-                        <p className="text-xs text-gray-600 mb-2">{offer.property.location}</p>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-bold text-green-600">${offer.offerAmount.toLocaleString()}</p>
-                            <p className="text-xs text-gray-500">Offer Amount</p>
-                          </div>
-                          <Badge variant={offer.status === 'pending' ? 'default' : 'secondary'}>
+                      <div key={offer._id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h3 className="font-medium text-gray-900">{offer.property?.title}</h3>
+                          <p className="text-sm text-gray-600">{offer.property?.address}</p>
+                          <p className="text-sm text-blue-600">Offered: ${offer.offerAmount?.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600">{new Date(offer.createdAt).toLocaleDateString()}</p>
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            offer.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            offer.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
                             {offer.status}
-                          </Badge>
+                          </span>
                         </div>
                       </div>
                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Recent Activity
-                </CardTitle>
-                <CardDescription>Your latest actions and updates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentActivity.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Bell className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 text-sm mb-1">No recent activity</p>
-                    <p className="text-xs text-gray-400">Your activity will appear here as you use the platform!</p>
                   </div>
                 ) : (
+                  <div className="text-center py-8">
+                    <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No active offers</h3>
+                    <p className="text-gray-600 mb-4">Make an offer when you find your dream property!</p>
+                    <button 
+                      onClick={() => router.push('/browse')}
+                      className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700"
+                    >
+                      Browse Properties
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-8">
+            {/* Saved Searches */}
+            <SavedSearchesSection />
+            
+            {/* Recommendations */}
+            <RecommendationsSection />
+            
+            {/* Recently Viewed */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center">
+                  <Eye className="h-5 w-5 text-blue-500 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">Recently Viewed</h2>
+                </div>
+                <button 
+                  onClick={() => handleViewAll('viewed')}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  View All
+                </button>
+              </div>
+              <div className="p-6">
+                {viewedProperties && viewedProperties.length > 0 ? (
                   <div className="space-y-3">
-                    {recentActivity.slice(0, 5).map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                        <div className="flex-1">
-                          <p className="text-sm">{activity.message}</p>
-                          <p className="text-xs text-gray-500">{activity.time}</p>
+                    {viewedProperties.slice(0, 3).map((property) => (
+                      <div key={property._id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                        <img 
+                          src={property.images?.[0] || '/images/placeholder.jpg'} 
+                          alt={property.title}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{property.title}</p>
+                          <p className="text-sm text-gray-600 truncate">{property.address}</p>
+                          <p className="text-sm font-semibold text-blue-600">${property.price?.toLocaleString()}</p>
                         </div>
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Eye className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">No recently viewed properties</p>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Notifications Panel */}
+      {showNotifications && (
+        <NotificationsPanel 
+          isOpen={showNotifications} 
+          onClose={() => setShowNotifications(false)} 
+        />
+      )}
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <BuyerProfileSection 
+          isOpen={showProfile} 
+          onClose={() => setShowProfile(false)} 
+        />
+      )}
     </div>
   );
 }

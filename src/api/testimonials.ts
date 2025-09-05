@@ -1,4 +1,4 @@
-import { USE_MOCKS, withMockFallback } from '@/utils/mockWrapper';
+import { USE_MOCKS, withDatabaseOnly } from '@/utils/mockWrapper';
 import { request } from '@/utils/api';
 
 // Simulate API delay
@@ -79,137 +79,85 @@ const mockTestimonials = [
 export const testimonialsApi = {
   // Get all testimonials
   async getTestimonials(limit?: number) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(500);
-        const testimonials = mockTestimonials
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        return limit ? testimonials.slice(0, limit) : testimonials;
-      },
-      // Real API call
-      async () => {
-        const params = limit ? `?limit=${limit}` : '';
-        const response = await request(`/testimonials${params}`);
-        return response.data;
-      }
-    );
+    return withDatabaseOnly(async () => {
+      await delay(500);
+      const testimonials = mockTestimonials
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return limit ? testimonials.slice(0, limit) : testimonials;
+    });
   },
 
   // Get featured testimonials
   async getFeaturedTestimonials(limit: number = 3) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(400);
-        return mockTestimonials
-          .filter(t => t.featured)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, limit);
-      },
-      // Real API call
-      async () => {
-        const response = await request(`/testimonials/featured?limit=${limit}`);
-        return response.data;
-      }
-    );
+    return withDatabaseOnly(async () => {
+      await delay(400);
+      return mockTestimonials
+        .filter(t => t.featured)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, limit);
+    });
   },
 
   // Get testimonials by agent
   async getTestimonialsByAgent(agentId: string) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(450);
-        return mockTestimonials
-          .filter(t => t.agentId === agentId)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      },
-      // Real API call
-      async () => {
-        const response = await request(`/testimonials/agent/${agentId}`);
-        return response.data;
-      }
-    );
+    return withDatabaseOnly(async () => {
+      await delay(450);
+      return mockTestimonials
+        .filter(t => t.agentId === agentId)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
   },
 
   // Get testimonial by ID
   async getTestimonialById(id: string) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(300);
-        const testimonial = mockTestimonials.find(t => t.id === id);
-        if (!testimonial) {
-          throw new Error('Testimonial not found');
-        }
-        return testimonial;
-      },
-      // Real API call
-      async () => {
-        const response = await request(`/testimonials/${id}`);
-        return response.data;
+    return withDatabaseOnly(async () => {
+      await delay(300);
+      const testimonial = mockTestimonials.find(t => t.id === id);
+      if (!testimonial) {
+        throw new Error('Testimonial not found');
       }
-    );
+      return testimonial;
+    });
   },
 
   // Submit new testimonial
   async submitTestimonial(testimonialData: any) {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(800);
-        const newTestimonial = {
-          id: `testimonial-${Date.now()}`,
-          ...testimonialData,
-          date: new Date().toISOString(),
-          verified: false,
-          featured: false
-        };
-        mockTestimonials.push(newTestimonial);
-        return newTestimonial;
-      },
-      // Real API call
-      async () => {
-        const response = await request('/testimonials', {
-          method: 'POST',
-          body: JSON.stringify(testimonialData)
-        });
-        return response.data;
-      }
-    );
+    return withDatabaseOnly(async () => {
+      await delay(800);
+      const newTestimonial = {
+        id: `testimonial-${Date.now()}`,
+        ...testimonialData,
+        date: new Date().toISOString(),
+        verified: false,
+        featured: false
+      };
+      mockTestimonials.push(newTestimonial);
+      return newTestimonial;
+    });
   },
 
   // Get testimonial statistics
   async getTestimonialStats() {
-    return withMockFallback(
-      // Mock implementation
-      async () => {
-        await delay(300);
-        const totalTestimonials = mockTestimonials.length;
-        const averageRating = mockTestimonials.reduce((sum, t) => sum + t.rating, 0) / totalTestimonials;
-        const verifiedCount = mockTestimonials.filter(t => t.verified).length;
-        const featuredCount = mockTestimonials.filter(t => t.featured).length;
-        
-        return {
-          totalTestimonials,
-          averageRating: Math.round(averageRating * 10) / 10,
-          verifiedCount,
-          featuredCount,
-          ratingDistribution: {
-            5: mockTestimonials.filter(t => t.rating === 5).length,
-            4: mockTestimonials.filter(t => t.rating === 4).length,
-            3: mockTestimonials.filter(t => t.rating === 3).length,
-            2: mockTestimonials.filter(t => t.rating === 2).length,
-            1: mockTestimonials.filter(t => t.rating === 1).length
-          }
-        };
-      },
-      // Real API call
-      async () => {
-        const response = await request('/testimonials/stats');
-        return response.data;
-      }
-    );
+    return withDatabaseOnly(async () => {
+      await delay(300);
+      const totalTestimonials = mockTestimonials.length;
+      const averageRating = mockTestimonials.reduce((sum, t) => sum + t.rating, 0) / totalTestimonials;
+      const verifiedCount = mockTestimonials.filter(t => t.verified).length;
+      const featuredCount = mockTestimonials.filter(t => t.featured).length;
+      
+      return {
+        totalTestimonials,
+        averageRating: Math.round(averageRating * 10) / 10,
+        verifiedCount,
+        featuredCount,
+        ratingDistribution: {
+          5: mockTestimonials.filter(t => t.rating === 5).length,
+          4: mockTestimonials.filter(t => t.rating === 4).length,
+          3: mockTestimonials.filter(t => t.rating === 3).length,
+          2: mockTestimonials.filter(t => t.rating === 2).length,
+          1: mockTestimonials.filter(t => t.rating === 1).length
+        }
+      };
+    });
   }
 };

@@ -1,91 +1,151 @@
-const Notification = require('../models/Notification');
-const { successResponse, errorResponse } = require('../utils/responseFormatter');
+const BuyerNotification = require('../models/BuyerNotification');
+const { validationResult } = require('express-validator');
 
-// @desc    Get user notifications
-// @route   GET /api/notifications
-// @access  Private
-const getNotifications = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
+// Get notifications for user
+exports.getNotifications = async (req, res) => {
+  try {
+    const { status = 'unread', limit = 20, page = 1 } = req.query;
+    
+    const query = { userId: req.user.id };
+    if (status !== 'all') {
+      query.status = status;
+    }
 
-  const total = await Notification.countDocuments({ user: req.user.id });
-  const notifications = await Notification.find({ user: req.user.id })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+    const notifications = await BuyerNotification.find(query)
+      .populate('data.propertyId', 'title address price images')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
-  res.json(
-    successResponse({
-      notifications,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
+    const total = await BuyerNotification.countDocuments(query);
+    const unreadCount = await BuyerNotification.countDocuments({
+      userId: req.user.id,
+      status: 'unread'
+    });
+
+    res.json({
+      success: true,
+      data: {
+        notifications,
+        pagination: {
+          current: page,
+          total: Math.ceil(total / limit),
+          count: notifications.length,
+          totalCount: total
+        },
+        unreadCount
       }
-    }, 'Notifications retrieved successfully')
-  );
-};
-
-// @desc    Mark notification as read
-// @route   PATCH /api/notifications/:id/read
-// @access  Private
-const markAsRead = async (req, res) => {
-  const notification = await Notification.findById(req.params.id);
-
-  if (!notification) {
-    return res.status(404).json(
-      errorResponse('Notification not found', 404)
-    );
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
+};
 
-  if (notification.user.toString() !== req.user.id) {
-    return res.status(403).json(
-      errorResponse('Not authorized to update this notification', 403)
+// Mark notification as read
+exports.markAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const notification = await BuyerNotification.findOneAndUpdate(
+      { _id: id, userId: req.user.id },
+      { 
+        status: 'read',
+        readAt: new Date()
+      },
+      { new: true }
     );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: notification
+    });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
   }
-
-  notification.isRead = true;
-  notification.readAt = new Date();
-  await notification.save();
-
-  res.json(
-    successResponse(notification, 'Notification marked as read')
-  );
 };
 
-// @desc    Mark all notifications as read
-// @route   PATCH /api/notifications/read-all
-// @access  Private
-const markAllAsRead = async (req, res) => {
-  await Notification.updateMany(
-    { user: req.user.id, isRead: false },
-    { isRead: true, readAt: new Date() }
-  );
+// Mark all notifications as read
+exports.markAllAsRead = async (req, res) => {
+  try {
+    await BuyerNotification.updateMany(
+      { userId: req.user.id, status: 'unread' },
+      { 
+        status: 'read',
+        readAt: new Date()
+      }
+    );
 
-  res.json(
-    successResponse(null, 'All notifications marked as read')
-  );
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
 };
 
-// @desc    Get unread count
-// @route   GET /api/notifications/unread-count
-// @access  Private
-const getUnreadCount = async (req, res) => {
-  const count = await Notification.countDocuments({
-    user: req.user.id,
-    isRead: false
-  });
+// Create notification (internal use)
+exports.createNotification = async (userId, notificationData) => {
+  try {
+    const notification = new BuyerNotification({
+      userId,
+      ...notificationData
+    });
 
-  res.json(
-    successResponse({ count }, 'Unread count retrieved successfully')
-  );
+    await notification.save();
+    return notification;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
 };
 
-module.exports = {
-  getNotifications,
-  markAsRead,
-  markAllAsRead,
-  getUnreadCount
+// Delete notification
+exports.deleteNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const notification = await BuyerNotification.findOneAndDelete({
+      _id: id,
+      userId: req.user.id
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Notification deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
 };

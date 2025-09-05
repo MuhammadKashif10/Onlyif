@@ -30,28 +30,59 @@ const termsRoutes = require('./routes/termsRoutes');
 const testimonialRoutes = require('./routes/testimonialRoutes');
 const buyerRoutes = require('./routes/buyerRoutes');
 const agentRoutes = require('./routes/agentRoutes');
-const agentsRoutes = require('./routes/agentsRoutes'); // Add this line
+const agentsRoutes = require('./routes/agentsRoutes');
 
 // Connect to database
 connectDB();
 
 const app = express();
 
-// CORS configuration - Single, unified configuration
+// Enhanced CORS configuration for frontend at localhost:3010
 const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3010',
-    'http://127.0.0.1:3010'
+    'http://127.0.0.1:3010',
+    'http://127.0.0.1:3000'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  optionsSuccessStatus: 200
 };
 
-// Apply middleware in correct order
 app.use(cors(corsOptions));
-app.use(helmet());
+
+// Additional CORS headers for static files and all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3010');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Configure helmet with relaxed settings for development
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+}));
+
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -68,8 +99,18 @@ if (process.env.NODE_ENV === 'development') {
 // Rate limiting
 app.use(generalLimiter);
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from uploads directory with explicit CORS headers
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3010');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, path) => {
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3010');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -77,6 +118,21 @@ app.get('/health', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
+  });
+});
+
+// API health check endpoints
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is working 🚀'
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API is working 🚀'
   });
 });
 
@@ -93,7 +149,7 @@ app.use('/api/terms', termsRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/agent', agentRoutes);
-app.use('/api/agents', agentsRoutes); // Add this line
+app.use('/api/agents', agentsRoutes);
 app.use('/api/cash-offers', require('./routes/cashOfferRoutes'));
 
 // Catch all handler
@@ -112,6 +168,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
+  console.log(`🌐 CORS enabled for: http://localhost:3010`);
 });
 
 module.exports = app;

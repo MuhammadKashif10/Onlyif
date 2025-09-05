@@ -4,82 +4,8 @@ import { request } from '@/utils/api';
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock assignments data
-const mockAssignments = [
-  {
-    id: 'assignment-1',
-    propertyId: '1',
-    propertyTitle: 'Modern Downtown Condo',
-    propertyAddress: '123 Main St, Austin, TX 78701',
-    agentId: 'agent-1',
-    agentName: 'Sarah Johnson',
-    buyerId: 'buyer-1',
-    buyerName: 'John Smith',
-    buyerEmail: 'john.smith@email.com',
-    buyerPhone: '(555) 123-4567',
-    status: 'active',
-    assignedAt: '2024-01-15T10:00:00Z',
-    priority: 'high',
-    notes: 'First-time buyer, needs guidance through the process',
-    tasks: [
-      {
-        id: 'task-1',
-        title: 'Schedule property viewing',
-        completed: true,
-        completedAt: '2024-01-16T14:30:00Z'
-      },
-      {
-        id: 'task-2',
-        title: 'Review financing options',
-        completed: false,
-        dueDate: '2024-01-25T17:00:00Z'
-      },
-      {
-        id: 'task-3',
-        title: 'Prepare offer documentation',
-        completed: false,
-        dueDate: '2024-01-28T17:00:00Z'
-      }
-    ]
-  },
-  {
-    id: 'assignment-2',
-    propertyId: '2',
-    propertyTitle: 'Spacious Family Home',
-    propertyAddress: '456 Oak Ave, Austin, TX 78702',
-    agentId: 'agent-2',
-    agentName: 'Michael Chen',
-    buyerId: 'buyer-2',
-    buyerName: 'Emily Davis',
-    buyerEmail: 'emily.davis@email.com',
-    buyerPhone: '(555) 987-6543',
-    status: 'completed',
-    assignedAt: '2024-01-10T09:00:00Z',
-    completedAt: '2024-01-20T16:00:00Z',
-    priority: 'medium',
-    notes: 'Experienced buyer, quick decision maker',
-    tasks: [
-      {
-        id: 'task-4',
-        title: 'Property inspection',
-        completed: true,
-        completedAt: '2024-01-12T11:00:00Z'
-      },
-      {
-        id: 'task-5',
-        title: 'Negotiate offer',
-        completed: true,
-        completedAt: '2024-01-18T15:30:00Z'
-      },
-      {
-        id: 'task-6',
-        title: 'Finalize purchase agreement',
-        completed: true,
-        completedAt: '2024-01-20T16:00:00Z'
-      }
-    ]
-  }
-];
+// Mock assignments data - removed all mock agents
+const mockAssignments: any[] = [];
 
 export const assignmentsApi = {
   // Get assignments for an agent

@@ -44,53 +44,10 @@ const seedData = async () => {
       logger.info(`Admin account already exists: ${admin.email}`);
     }
 
-    // 2. Create Agent Accounts
-    const agents = [
-      {
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@onlyif.com',
-        password: 'agent123',
-        role: 'agent',
-        termsAccepted: true,
-        termsAcceptedAt: new Date(),
-        termsVersion: '1.0',
-        agentProfile: {
-          phone: '+15550101',
-          brokerage: 'Premier Real Estate Group',
-          yearsOfExperience: 8,
-          specializations: ['residential', 'luxury'],
-          serviceAreas: [{
-            city: 'Austin',
-            state: 'TX',
-            zipCodes: ['78701', '78702', '78703']
-          }],
-          bio: 'Experienced real estate agent specializing in residential and luxury properties with over 8 years in the Austin market.',
-          languages: ['English', 'Spanish']
-        }
-      },
-      {
-        name: 'Michael Chen',
-        email: 'michael.chen@onlyif.com',
-        password: 'agent123',
-        role: 'agent',
-        termsAccepted: true,
-        termsAcceptedAt: new Date(),
-        termsVersion: '1.0',
-        agentProfile: {
-          phone: '+15550102',
-          brokerage: 'Austin Property Solutions',
-          yearsOfExperience: 12,
-          specializations: ['commercial', 'investment'],
-          serviceAreas: [{
-            city: 'Austin',
-            state: 'TX',
-            zipCodes: ['78704', '78705', '78706']
-          }],
-          bio: 'Commercial real estate specialist with 12 years of experience helping clients with investment properties and commercial transactions.',
-          languages: ['English', 'Mandarin']
-        }
-      }
-    ];
+    // 2. Create Agent Accounts - REMOVED MOCK AGENTS
+    // Mock agents (Sarah Johnson and Michael Chen) have been permanently removed
+    // Only real agents added by users will remain in the database
+    const agents = [];
 
     const createdAgents = [];
     for (const agentData of agents) {
@@ -317,9 +274,7 @@ const seedData = async () => {
     logger.info('\nAdmin Login Credentials:');
     logger.info(`Email: ${ADMIN_EMAIL}`);
     logger.info(`Password: ${ADMIN_PASSWORD}`);
-    logger.info('\nAgent Login Credentials:');
-    logger.info('Agent 1 - Sarah Johnson: sarah.johnson@onlyif.com / agent123');
-    logger.info('Agent 2 - Michael Chen: michael.chen@onlyif.com / agent123');
+    logger.info('\nNo mock agents created - only real user-registered agents will be in the database');
     logger.info('\nSeller Login Credentials:');
     logger.info('Seller - John Smith: john.smith@example.com / seller123');
     logger.info('\nNote: Admin cannot register through the frontend - login only!');

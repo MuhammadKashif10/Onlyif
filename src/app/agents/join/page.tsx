@@ -3,11 +3,12 @@ import { Navbar } from '@/components';
 import Footer from '@/components/main/Footer';
 import HeroSection from '@/components/sections/HeroSection';
 
-export const metadata: Metadata = {
-  title: 'Become an Agent | OnlyIf - Real Estate Platform',
-  description: 'Join our network of professional real estate agents and grow your business with OnlyIf.',
-  keywords: 'become real estate agent, agent registration, real estate career, OnlyIf agents',
-};
+// Remove the metadata export - not allowed in client components
+// export const metadata: Metadata = {
+//   title: 'Become an Agent | OnlyIf - Real Estate Platform',
+//   description: 'Join our network of professional real estate agents and grow your business with OnlyIf.',
+//   keywords: 'become real estate agent, agent registration, real estate career, OnlyIf agents',
+// };
 
 export default function AgentJoinPage() {
   return (

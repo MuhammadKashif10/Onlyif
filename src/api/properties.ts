@@ -71,29 +71,39 @@ export const propertiesApi = {
   },
 
   // Add new function to fetch property by ID
-  async getPropertyById(id: string): Promise<any> {
+  async getPropertyById(id: string): Promise<{ success: boolean; data?: Property; message?: string }> {
     try {
-      const response = await apiClient.get(`/properties/${id}`);
+      console.log('🔍 Fetching property by ID:', id);
+      const response = await apiClient.get<BackendResponse<Property>>(`/properties/${id}`);
+      console.log('📦 Raw API response:', response);
       
-      // Ensure consistent response structure
-      if (response.data) {
+      // Handle the BackendResponse structure correctly
+      if (response.success && response.data) {
+        console.log('✅ Property fetched successfully:', response.data);
         return {
           success: true,
-          data: response.data,
-          message: 'Property fetched successfully'
+          data: response.data
         };
       } else {
+        console.log('❌ Property not found or API returned error:', response.message);
         return {
           success: false,
-          data: null,
+          message: response.message || 'Property not found'
+        };
+      }
+    } catch (error: any) {
+      console.error('💥 Error fetching property:', error);
+      
+      // Handle 404 errors specifically
+      if (error.response?.status === 404) {
+        return {
+          success: false,
           message: 'Property not found'
         };
       }
-    } catch (error) {
-      console.error('Error fetching property by ID:', error);
+      
       return {
         success: false,
-        data: null,
         message: 'Failed to fetch property details'
       };
     }
