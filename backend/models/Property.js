@@ -57,7 +57,8 @@ const propertySchema = new mongoose.Schema({
     },
     coordinates: {
       type: [Number], // [longitude, latitude]
-      required: [true, 'Property coordinates are required'],
+      required: false, // Make this optional
+      default: [-98.5795, 39.8283], // Default to center of US
       validate: {
         validator: function(coords) {
           return coords.length === 2 && 
@@ -153,6 +154,32 @@ const propertySchema = new mongoose.Schema({
     }
   }],
 
+  // Add floor plans array
+  floorPlans: [{
+    url: {
+      type: String,
+      required: true
+    },
+    caption: String,
+    order: {
+      type: Number,
+      default: 0
+    }
+  }],
+
+  // Add videos array
+  videos: [{
+    url: {
+      type: String,
+      required: true
+    },
+    caption: String,
+    order: {
+      type: Number,
+      default: 0
+    }
+  }],
+
   // Add mainImage field for quick access
   mainImage: {
     url: {
@@ -168,6 +195,13 @@ const propertySchema = new mongoose.Schema({
       type: String,
       default: null
     }
+  },
+
+  // Add lot size field
+  lotSize: {
+    type: Number,
+    min: [0, 'Lot size cannot be negative'],
+    max: [1000000, 'Lot size cannot exceed 1,000,000 sq ft']
   },
   
   status: {

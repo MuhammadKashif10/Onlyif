@@ -27,18 +27,22 @@ export default function SellerDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
-    address: '',
+    street: '', // Changed from 'address' to 'street'
     city: '',
     state: '',
     zipCode: '',
     price: '',
     beds: '',
     baths: '',
-    size: '',
-    propertyType: 'Single Family',
-    description: ''
+    squareMeters: '', // Changed from 'size' to 'squareMeters'
+    propertyType: 'single-family', // Changed to match enum
+    description: '',
+    // Add required contact info fields
+    contactName: '',
+    contactEmail: '',
+    contactPhone: ''
   });
-
+  
   // Authentication check
   useEffect(() => {
     if (authLoading) return;
@@ -157,17 +161,24 @@ export default function SellerDashboard() {
       // Create new property via API
       const newProperty = await propertiesApi.submitProperty({
         title: formData.title,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
+        address: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode
+        },
         price: parseFloat(formData.price),
         beds: parseInt(formData.beds),
         baths: parseFloat(formData.baths),
-        size: parseInt(formData.size),
+        squareMeters: parseInt(formData.squareMeters), // Changed from 'size'
         propertyType: formData.propertyType,
         description: formData.description,
-        status: 'pending' // Start as pending, can be changed to public later
+        contactInfo: {
+          name: formData.contactName,
+          email: formData.contactEmail,
+          phone: formData.contactPhone
+        },
+        status: 'pending'
       });
       
       // Add to local state for immediate UI update
@@ -186,9 +197,12 @@ export default function SellerDashboard() {
         price: '',
         beds: '',
         baths: '',
-        size: '',
-        propertyType: 'Single Family',
-        description: ''
+        squareMeters: '', // Changed from 'size'
+        propertyType: 'single-family', // Changed to match enum
+        description: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: ''
       });
       setShowAddModal(false);
       
@@ -373,7 +387,7 @@ export default function SellerDashboard() {
               <form onSubmit={handleAddListing} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Title *</label>
                     <input
                       type="text"
                       name="title"
@@ -385,27 +399,30 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Type *</label>
                     <select
                       name="propertyType"
                       value={formData.propertyType}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="Single Family">Single Family</option>
-                      <option value="Condo">Condo</option>
-                      <option value="Townhouse">Townhouse</option>
-                      <option value="Multi-Family">Multi-Family</option>
+                      <option value="single-family">Single Family</option>
+                      <option value="condo">Condo</option>
+                      <option value="townhouse">Townhouse</option>
+                      <option value="multi-family">Multi Family</option>
+                      <option value="land">Land</option>
+                      <option value="commercial">Commercial</option>
+                      <option value="apartment">Apartment</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Street Address *</label>
                   <input
                     type="text"
-                    name="address"
-                    value={formData.address}
+                    name="street"
+                    value={formData.street}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
@@ -414,7 +431,7 @@ export default function SellerDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
                     <input
                       type="text"
                       name="city"
@@ -426,7 +443,7 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
                     <input
                       type="text"
                       name="state"
@@ -438,7 +455,7 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Zip Code</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Zip Code *</label>
                     <input
                       type="text"
                       name="zipCode"
@@ -452,7 +469,7 @@ export default function SellerDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price ($) *</label>
                     <input
                       type="number"
                       name="price"
@@ -464,7 +481,7 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms *</label>
                     <input
                       type="number"
                       name="beds"
@@ -476,7 +493,7 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bathrooms</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bathrooms *</label>
                     <input
                       type="number"
                       step="0.5"
@@ -489,14 +506,40 @@ export default function SellerDashboard() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Square Feet</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Square Meters *</label>
                     <input
                       type="number"
-                      name="size"
-                      value={formData.size}
+                      name="squareMeters"
+                      value={formData.squareMeters}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year Built</label>
+                    <input
+                      type="number"
+                      name="yearBuilt"
+                      value={formData.yearBuilt}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="1800"
+                      max={new Date().getFullYear() + 2}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lot Size (sq meters)</label>
+                    <input
+                      type="number"
+                      name="lotSize"
+                      value={formData.lotSize}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -513,20 +556,156 @@ export default function SellerDashboard() {
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
+                    <input
+                      type="text"
+                      name="contactName"
+                      value={formData.contactName}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email *</label>
+                    <input
+                      type="email"
+                      name="contactEmail"
+                      value={formData.contactEmail}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone *</label>
+                  <input
+                    type="tel"
+                    name="contactPhone"
+                    value={formData.contactPhone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* File Upload Sections */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900">Media Files</h3>
+                  
+                  {/* Property Images */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Property Images</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'images')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {files.images.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {files.images.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile('images', index)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                
+                  {/* Floor Plans */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Floor Plans</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleFileChange(e, 'floorPlans')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {files.floorPlans.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {files.floorPlans.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile('floorPlans', index)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                
+                  {/* Videos */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Property Videos</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/*"
+                      onChange={(e) => handleFileChange(e, 'videos')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {files.videos.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {files.videos.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile('videos', index)}
+                              className="text-red-500 hover:text-red-700 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Error Display */}
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    {error}
+                  </div>
+                )}
+
                 <div className="flex justify-end space-x-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setError(null);
+                    }}
                     className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                    disabled={submitLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    disabled={submitLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Adding...' : 'Add Listing'}
+                    {submitLoading ? 'Adding...' : 'Add Listing'}
                   </button>
                 </div>
               </form>
@@ -537,3 +716,118 @@ export default function SellerDashboard() {
     </div>
   );
 }
+
+const handleAddListing = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  try {
+    setSubmitLoading(true);
+    setError(null);
+    
+    // Create FormData for file upload
+    const formDataToSend = new FormData();
+    
+    // Add property data
+    formDataToSend.append('owner', user?.id || '');
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('street', formData.street);
+    formDataToSend.append('city', formData.city);
+    formDataToSend.append('state', formData.state);
+    formDataToSend.append('zipCode', formData.zipCode);
+    formDataToSend.append('price', formData.price);
+    formDataToSend.append('beds', formData.beds);
+    formDataToSend.append('baths', formData.baths);
+    formDataToSend.append('squareMeters', formData.squareMeters);
+    formDataToSend.append('propertyType', formData.propertyType);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('contactName', formData.contactName);
+    formDataToSend.append('contactEmail', formData.contactEmail);
+    formDataToSend.append('contactPhone', formData.contactPhone);
+    
+    if (formData.yearBuilt) {
+      formDataToSend.append('yearBuilt', formData.yearBuilt);
+    }
+    if (formData.lotSize) {
+      formDataToSend.append('lotSize', formData.lotSize);
+    }
+    
+    // Add files
+    files.images.forEach(file => {
+      formDataToSend.append('images', file);
+    });
+    files.floorPlans.forEach(file => {
+      formDataToSend.append('floorPlans', file);
+    });
+    files.videos.forEach(file => {
+      formDataToSend.append('videos', file);
+    });
+    
+    // Use the correct API endpoint for file uploads
+    const result = await propertiesApi.createPropertyWithFiles(formDataToSend);
+    
+    if (result.success && result.data) {
+      // Add to local state for immediate UI update
+      setActiveListings(prev => [result.data, ...prev]);
+      
+      // Update statistics
+      await loadData();
+      
+      // Reset form and close modal
+      setFormData({
+        title: '',
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        price: '',
+        beds: '',
+        baths: '',
+        squareMeters: '',
+        propertyType: 'single-family',
+        description: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: '',
+        yearBuilt: '',
+        lotSize: ''
+      });
+      
+      setFiles({
+        images: [],
+        floorPlans: [],
+        videos: []
+      });
+      
+      setShowAddModal(false);
+      
+      // Show success message
+      setError(null);
+      console.log('✅ Property created successfully:', result.data);
+      
+    } else {
+      throw new Error(result.error || 'Failed to create property');
+    }
+    
+  } catch (err: any) {
+    console.error('❌ Error adding property:', err);
+    setError(err.message || 'Failed to add property. Please try again.');
+  } finally {
+    setSubmitLoading(false); // Always re-enable the button
+  }
+};
+
+// Add file handling functions
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'images' | 'floorPlans' | 'videos') => {
+  const selectedFiles = Array.from(e.target.files || []);
+  setFiles(prev => ({
+    ...prev,
+    [fileType]: selectedFiles
+  }));
+};
+
+const removeFile = (fileType: 'images' | 'floorPlans' | 'videos', index: number) => {
+  setFiles(prev => ({
+    ...prev,
+    [fileType]: prev[fileType].filter((_, i) => i !== index)
+  }));
+};

@@ -7,6 +7,7 @@ import PasswordField from '../../reusable/PasswordField';
 import Button from '../../reusable/Button';
 import { validatePassword, validatePasswordConfirmation } from '../../../utils/passwordValidation';
 import { useAuth } from '../../../context/AuthContext';
+import PrivacyPolicyModal from '../../reusable/PrivacyPolicyModal';
 
 interface RegistrationPhaseProps {
   onNext: () => void;
@@ -14,9 +15,10 @@ interface RegistrationPhaseProps {
 }
 
 const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack }) => {
-  const { data, updateData } = useSellerContext(); // Changed from sellerData, updateSellerData
+  const { data, updateData } = useSellerContext();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  // Remove this line: const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -63,8 +65,29 @@ const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack })
     }
 
     // Terms validation
-    if (!data.termsAccepted) { // Changed from sellerData.termsAccepted
+    if (!data.termsAccepted) {
       newErrors.terms = 'You must accept the terms and conditions';
+    }
+    
+    // Seller agreements validation
+    if (!data.legalAuthorization) {
+      newErrors.legalAuthorization = 'You must confirm legal authorization to list the property';
+    }
+    
+    if (!data.successFeeAgreement) {
+      newErrors.successFeeAgreement = 'You must agree to the success fee terms';
+    }
+    
+    if (!data.noBypassing) {
+      newErrors.noBypassing = 'You must agree not to bypass the platform';
+    }
+    
+    if (!data.upgradesAcknowledgment) {
+      newErrors.upgradesAcknowledgment = 'You must acknowledge the optional listing upgrades';
+    }
+    
+    if (!data.agentPartnerHelp) {
+      newErrors.agentPartnerHelp = 'You must acknowledge the agent partner help option';
     }
 
     setErrors(newErrors);
@@ -155,38 +178,137 @@ const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack })
 
         <PasswordField
           label="Confirm Password"
-          value={data.confirmPassword || ''} // Changed from sellerData.confirmPassword
-          onChange={(value) => updateData({ confirmPassword: value })} // Changed from updateSellerData
+          value={data.confirmPassword || ''}
+          onChange={(value) => updateData({ confirmPassword: value })}
           error={errors.confirmPassword}
           placeholder="Confirm your password"
           isConfirmation
           required
         />
 
-        <div className="flex items-start">
-          <div className="flex items-center h-5">
-            <input
-              id="terms"
-              type="checkbox"
-              checked={data.termsAccepted} // Changed from sellerData.termsAccepted
-              onChange={(e) => updateData({ termsAccepted: e.target.checked })} // Changed from updateSellerData
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-            />
+        {/* All Agreement Checkboxes */}
+        <div className="space-y-4">
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="terms"
+                type="checkbox"
+                checked={data.termsAccepted}
+                onChange={(e) => updateData({ termsAccepted: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="terms" className="text-gray-700">
+                I agree to the{' '}
+                <a href="/terms" className="text-blue-600 hover:text-blue-500 underline">
+                  Terms and Conditions
+                </a>
+              </label>
+              {errors.terms && (
+                <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
+              )}
+            </div>
           </div>
-          <div className="ml-3 text-sm">
-            <label htmlFor="terms" className="text-gray-700">
-              I agree to the{' '}
-              <a href="/terms" className="text-blue-600 hover:text-blue-500 underline">
-                Terms and Conditions
-              </a>{' '}
-              and{' '}
-              <a href="/privacy" className="text-blue-600 hover:text-blue-500 underline">
-                Privacy Policy
-              </a>
-            </label>
-            {errors.terms && (
-              <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
-            )}
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="legalAuthorization"
+                type="checkbox"
+                checked={data.legalAuthorization}
+                onChange={(e) => updateData({ legalAuthorization: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="legalAuthorization" className="text-gray-700">
+                I confirm I am legally authorised to list the property on Only If.
+              </label>
+              {errors.legalAuthorization && (
+                <p className="mt-1 text-sm text-red-600">{errors.legalAuthorization}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="successFeeAgreement"
+                type="checkbox"
+                checked={data.successFeeAgreement}
+                onChange={(e) => updateData({ successFeeAgreement: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="successFeeAgreement" className="text-gray-700">
+                I agree to a 1.1% (inc. GST) success fee if a buyer from Only If purchases my property.
+              </label>
+              {errors.successFeeAgreement && (
+                <p className="mt-1 text-sm text-red-600">{errors.successFeeAgreement}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="noBypassing"
+                type="checkbox"
+                checked={data.noBypassing}
+                onChange={(e) => updateData({ noBypassing: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="noBypassing" className="text-gray-700">
+                I will not attempt to bypass the platform or agent once a buyer is introduced.
+              </label>
+              {errors.noBypassing && (
+                <p className="mt-1 text-sm text-red-600">{errors.noBypassing}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="upgradesAcknowledgment"
+                type="checkbox"
+                checked={data.upgradesAcknowledgment}
+                onChange={(e) => updateData({ upgradesAcknowledgment: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="upgradesAcknowledgment" className="text-gray-700">
+                I understand optional listing upgrades (photos, floorplan, video) are available at extra cost.
+              </label>
+              {errors.upgradesAcknowledgment && (
+                <p className="mt-1 text-sm text-red-600">{errors.upgradesAcknowledgment}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                id="agentPartnerHelp"
+                type="checkbox"
+                checked={data.agentPartnerHelp}
+                onChange={(e) => updateData({ agentPartnerHelp: e.target.checked })}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+            <div className="ml-3 text-sm">
+              <label htmlFor="agentPartnerHelp" className="text-gray-700">
+                I may request help from an Only If Agent Partner if needed.
+              </label>
+              {errors.agentPartnerHelp && (
+                <p className="mt-1 text-sm text-red-600">{errors.agentPartnerHelp}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -210,12 +332,18 @@ const RegistrationPhase: React.FC<RegistrationPhaseProps> = ({ onNext, onBack })
             type="submit"
             variant="primary"
             disabled={isLoading}
-            className="min-w-[120px]"
-          >
+            className="min-w-[120px]">
             {isLoading ? 'Creating...' : 'Continue'}
           </Button>
         </div>
       </form>
+      
+      {/* Remove this entire block:
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
+      */}
     </div>
   );
 };

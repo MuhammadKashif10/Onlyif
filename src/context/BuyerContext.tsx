@@ -13,6 +13,9 @@ interface BuyerData {
   termsAccepted: boolean;
   selectedProperty?: any;
   interestExpressed: boolean;
+  unlockFeeAcknowledgment: boolean;
+  noBypassing: boolean;
+  responsibilityAcknowledgment: boolean;
 }
 
 interface RecentActivity {
@@ -54,6 +57,9 @@ const initialBuyerData: BuyerData = {
   otpVerified: false,
   termsAccepted: false,
   interestExpressed: false,
+  unlockFeeAcknowledgment: false,
+  noBypassing: false,
+  responsibilityAcknowledgment: false,
 };
 
 const BuyerContext = createContext<BuyerContextType | undefined>(undefined);

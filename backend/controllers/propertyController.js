@@ -497,7 +497,7 @@ const submitPropertyPublic = async (req, res) => {
       title, address, city, state, zipCode, price, beds, baths, 
       squareMeters, propertyType, yearBuilt, description, features,
       contactName, contactEmail, contactPhone, images, timeframe,
-      latitude = 0, longitude = 0
+      latitude = 39.8283, longitude = -98.5795  // Use valid default coordinates
     } = req.body;
 
     // Validation for required fields
@@ -557,7 +557,7 @@ const submitPropertyPublic = async (req, res) => {
       },
       location: {
         type: 'Point',
-        coordinates: [parseFloat(longitude) || 0, parseFloat(latitude) || 0]
+        coordinates: [parseFloat(longitude) || -98.5795, parseFloat(latitude) || 39.8283]  // Use valid defaults
       },
       propertyType,
       price: parseFloat(price),
@@ -705,96 +705,232 @@ const getFavoriteProperties = async (req, res) => {
 // @route   POST /api/properties/upload
 // @access  Private
 const createPropertyWithFiles = async (req, res) => {
+  console.log('🏠 Creating property with files...');
+  
   try {
+    // Validate user authentication and role
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        message: 'You must be logged in to create a property.'
+      });
+    }
+
+    if (req.user.role !== 'seller') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'Only sellers can create property listings.'
+      });
+    }
+
+    // Extract and validate form data
     const {
-      owner, title, street, city, state, zipCode, price, beds, baths,
+      title, street, city, state, zipCode, price, beds, baths,
       squareMeters, propertyType, yearBuilt, description,
       contactName, contactEmail, contactPhone, lotSize
     } = req.body;
 
-    // Validation for required fields
+    console.log('📝 Form data received:', {
+      title, street, city, state, zipCode, price, beds, baths,
+      squareMeters, propertyType, contactName, contactEmail
+    });
+
+    // Comprehensive field validation
     const requiredFields = {
-      owner, title, street, city, state, zipCode, price, beds, baths,
-      squareMeters, propertyType, contactName, contactEmail, contactPhone
+      title: 'Property title',
+      street: 'Street address', 
+      city: 'City',
+      state: 'State',
+      zipCode: 'ZIP code',
+      price: 'Price',
+      beds: 'Number of bedrooms',
+      baths: 'Number of bathrooms',
+      squareMeters: 'Square meters',
+      propertyType: 'Property type',
+      contactName: 'Contact name',
+      contactEmail: 'Contact email',
+      contactPhone: 'Contact phone'
     };
 
-    const missingFields = Object.entries(requiredFields)
-      .filter(([key, value]) => !value && value !== 0)
-      .map(([key]) => key);
+    const missingFields = [];
+    const invalidFields = [];
+
+    // Check for missing required fields
+    Object.entries(requiredFields).forEach(([key, label]) => {
+      const value = req.body[key];
+      if (!value && value !== 0) {
+        missingFields.push(label);
+      }
+    });
 
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `Missing required fields: ${missingFields.join(', ')}`
+        error: 'Missing required fields',
+        message: `Please provide the following required fields: ${missingFields.join(', ')}.`,
+        missingFields
       });
     }
 
-    // Process uploaded files
+    // Validate data types and ranges
+    try {
+      const numericPrice = parseFloat(price);
+      const numericBeds = parseInt(beds);
+      const numericBaths = parseFloat(baths);
+      const numericSquareMeters = parseFloat(squareMeters);
+      const numericYearBuilt = yearBuilt ? parseInt(yearBuilt) : undefined;
+      const numericLotSize = lotSize ? parseFloat(lotSize) : undefined;
+
+      // Validate numeric ranges
+      if (isNaN(numericPrice) || numericPrice <= 0) {
+        invalidFields.push('Price must be a positive number');
+      }
+      if (isNaN(numericBeds) || numericBeds < 0) {
+        invalidFields.push('Bedrooms must be a non-negative number');
+      }
+      if (isNaN(numericBaths) || numericBaths < 0) {
+        invalidFields.push('Bathrooms must be a non-negative number');
+      }
+      if (isNaN(numericSquareMeters) || numericSquareMeters <= 0) {
+        invalidFields.push('Square meters must be a positive number');
+      }
+      if (yearBuilt && (isNaN(numericYearBuilt) || numericYearBuilt < 1800 || numericYearBuilt > new Date().getFullYear() + 2)) {
+        invalidFields.push('Year built must be between 1800 and ' + (new Date().getFullYear() + 2));
+      }
+      if (lotSize && (isNaN(numericLotSize) || numericLotSize < 0)) {
+        invalidFields.push('Lot size must be a non-negative number');
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(contactEmail)) {
+        invalidFields.push('Contact email must be a valid email address');
+      }
+
+      // Validate ZIP code format
+      const zipRegex = /^\d{5}(-\d{4})?$/;
+      if (!zipRegex.test(zipCode)) {
+        invalidFields.push('ZIP code must be in format 12345 or 12345-6789');
+      }
+
+      if (invalidFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid field values',
+          message: 'Please correct the following errors: ' + invalidFields.join(', '),
+          invalidFields
+        });
+      }
+    } catch (validationError) {
+      console.error('❌ Data validation error:', validationError);
+      return res.status(400).json({
+        success: false,
+        error: 'Data validation failed',
+        message: 'Invalid data format provided. Please check your input values.'
+      });
+    }
+
+    // Process uploaded files with error handling
     const images = [];
     const floorPlans = [];
     const videos = [];
 
-    if (req.files) {
-      // Process property images
-      if (req.files.images) {
-        req.files.images.forEach((file, index) => {
-          images.push({
-            url: `/uploads/images/${file.filename}`,
-            caption: file.originalname,
-            isPrimary: index === 0,
-            order: index
+    try {
+      if (req.files) {
+        console.log('📁 Processing uploaded files:', Object.keys(req.files));
+        
+        // Process property images
+        if (req.files.images && Array.isArray(req.files.images)) {
+          req.files.images.forEach((file, index) => {
+            try {
+              images.push({
+                url: `/uploads/images/${file.filename}`,
+                caption: file.originalname,
+                isPrimary: index === 0,
+                order: index
+              });
+              console.log(`✅ Processed image ${index + 1}: ${file.filename}`);
+            } catch (fileError) {
+              console.error(`❌ Error processing image ${index + 1}:`, fileError);
+              throw new Error(`Failed to process image file: ${file.originalname}`);
+            }
           });
-        });
-      }
+        }
 
-      // Process floor plans
-      if (req.files.floorPlans) {
-        req.files.floorPlans.forEach((file, index) => {
-          floorPlans.push({
-            url: `/uploads/floorplans/${file.filename}`,
-            caption: file.originalname,
-            order: index
+        // Process floor plans
+        if (req.files.floorPlans && Array.isArray(req.files.floorPlans)) {
+          req.files.floorPlans.forEach((file, index) => {
+            try {
+              floorPlans.push({
+                url: `/uploads/floorplans/${file.filename}`,
+                caption: file.originalname,
+                order: index
+              });
+              console.log(`✅ Processed floor plan ${index + 1}: ${file.filename}`);
+            } catch (fileError) {
+              console.error(`❌ Error processing floor plan ${index + 1}:`, fileError);
+              throw new Error(`Failed to process floor plan file: ${file.originalname}`);
+            }
           });
-        });
-      }
+        }
 
-      // Process videos
-      if (req.files.videos) {
-        req.files.videos.forEach((file, index) => {
-          videos.push({
-            url: `/uploads/videos/${file.filename}`,
-            caption: file.originalname,
-            order: index
+        // Process videos
+        if (req.files.videos && Array.isArray(req.files.videos)) {
+          req.files.videos.forEach((file, index) => {
+            try {
+              videos.push({
+                url: `/uploads/videos/${file.filename}`,
+                caption: file.originalname,
+                order: index
+              });
+              console.log(`✅ Processed video ${index + 1}: ${file.filename}`);
+            } catch (fileError) {
+              console.error(`❌ Error processing video ${index + 1}:`, fileError);
+              throw new Error(`Failed to process video file: ${file.originalname}`);
+            }
           });
-        });
+        }
       }
+    } catch (fileProcessingError) {
+      console.error('❌ File processing error:', fileProcessingError);
+      return res.status(400).json({
+        success: false,
+        error: 'File processing failed',
+        message: fileProcessingError.message || 'Failed to process uploaded files.'
+      });
     }
 
-    // Create property data
+    // Use default coordinates for US properties (center of continental US)
+    // In production, you should implement proper geocoding
+    const defaultCoordinates = [-98.5795, 39.8283]; // Center of continental US
+
+    // Create property data object
     const propertyData = {
-      owner,
-      title,
+      owner: req.user.id, // Use authenticated user's ID
+      title: title.trim(),
       address: {
-        street,
-        city,
-        state,
-        zipCode,
+        street: street.trim(),
+        city: city.trim(),
+        state: state.trim().toUpperCase(),
+        zipCode: zipCode.trim(),
         country: 'US'
       },
       location: {
         type: 'Point',
-        coordinates: [0, 0] // You'll need to implement geocoding
+        coordinates: defaultCoordinates
       },
       price: parseFloat(price),
       beds: parseInt(beds),
       baths: parseFloat(baths),
       squareMeters: parseFloat(squareMeters),
-      propertyType: propertyType.toLowerCase().replace(' ', '-'),
-      description: description || '',
+      propertyType: propertyType.toLowerCase().replace(/\s+/g, '-'),
+      description: description ? description.trim() : '',
       contactInfo: {
-        name: contactName,
-        email: contactEmail,
-        phone: contactPhone
+        name: contactName.trim(),
+        email: contactEmail.trim().toLowerCase(),
+        phone: contactPhone.trim()
       },
       images,
       floorPlans,
@@ -806,22 +942,76 @@ const createPropertyWithFiles = async (req, res) => {
       mainImage: images.length > 0 ? {
         url: images[0].url,
         caption: images[0].caption
+      } : null,
+      finalImageUrl: images.length > 0 ? {
+        url: images[0].url
       } : null
     };
 
-    const property = new Property(propertyData);
-    await property.save();
+    console.log('💾 Saving property to database...');
+    
+    // Save to database with comprehensive error handling
+    let savedProperty;
+    try {
+      const property = new Property(propertyData);
+      savedProperty = await property.save();
+      console.log('✅ Property saved successfully:', savedProperty._id);
+    } catch (dbError) {
+      console.error('❌ Database save error:', dbError);
+      
+      // Handle specific MongoDB validation errors
+      if (dbError.name === 'ValidationError') {
+        const validationErrors = Object.values(dbError.errors).map(err => err.message);
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          message: 'Property data validation failed: ' + validationErrors.join(', '),
+          validationErrors
+        });
+      } else if (dbError.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Duplicate entry',
+          message: 'A property with similar details already exists.'
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: 'Database error',
+          message: 'Failed to save property to database. Please try again.'
+        });
+      }
+    }
 
+    // Success response
+    console.log('🎉 Property created successfully with files');
     res.status(201).json({
       success: true,
-      data: property,
-      message: 'Property created successfully with files'
+      data: savedProperty,
+      message: 'Property created successfully with files',
+      filesUploaded: {
+        images: images.length,
+        floorPlans: floorPlans.length,
+        videos: videos.length
+      }
     });
+
   } catch (error) {
-    console.error('Error creating property with files:', error);
+    console.error('❌ Unexpected error in createPropertyWithFiles:', error);
+    
+    // Log detailed error for debugging
+    console.error('Error stack:', error.stack);
+    
     res.status(500).json({
       success: false,
-      message: error.message || 'Server error while creating property'
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while creating the property. Please try again.',
+      ...(process.env.NODE_ENV === 'development' && { 
+        debug: {
+          message: error.message,
+          stack: error.stack
+        }
+      })
     });
   }
 };

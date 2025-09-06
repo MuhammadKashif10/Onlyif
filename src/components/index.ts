@@ -1,6 +1,6 @@
 // Layout Components
 export { default as Navbar } from './layout/Navbar';
-export { default as Footer } from './layout/Footer'; // Make sure this points to the layout Footer
+export { default as Footer } from './main/Footer'; // Fixed: Changed from './layout/Footer' to './main/Footer'
 
 // Section Components
 export { default as HeroSection } from './sections/HeroSection';

@@ -196,7 +196,6 @@ export default function AgentsPage() {
             ))}
           </div>
         </div>
-        <Footer />
       </div>
     );
   }

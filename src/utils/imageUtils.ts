@@ -55,6 +55,64 @@ export function isValidImageUrl(url: string): boolean {
 }
 
 /**
+ * Constructs full backend URL for image paths
+ */
+function constructBackendImageUrl(imagePath: string): string {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+  
+  // Handle different path formats
+  if (imagePath.startsWith('/uploads')) {
+    return `${backendUrl}${imagePath}`;
+  }
+  
+  if (imagePath.includes('uploads') && !imagePath.startsWith('http')) {
+    // Handle relative paths like "uploads/images/..."
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${backendUrl}${cleanPath}`;
+  }
+  
+  return imagePath;
+}
+
+export function getSafeImageUrl(imagePath: string | null | undefined, type: 'property' | 'agent' | 'user' = 'property'): string {
+  if (!imagePath) {
+    return ''; // Return empty string instead of placeholder
+  }
+
+  // Handle external URLs (already complete URLs)
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // Handle frontend static images (from public directory)
+  if (imagePath.startsWith('/images/')) {
+    return imagePath; // Return as-is, Next.js will serve from public directory
+  }
+
+  // Validate image extension
+  if (!isValidImageUrl(imagePath)) {
+    return ''; // Return empty string instead of placeholder
+  }
+
+  // Construct backend URL for uploaded images (like /uploads/...)
+  return constructBackendImageUrl(imagePath);
+}
+
+/**
+ * Returns an array of safe image URLs without fallbacks
+ */
+export function getSafeImageArray(
+  images: string[], 
+  propertyType?: string, 
+  minCount: number = 1
+): string[] {
+  const validImages = images.filter(img => img && isValidImageUrl(img));
+  
+  // Return only valid images, no placeholders
+  return validImages;
+}
+
+/**
  * Gets a random placeholder image for a specific property type
  */
 export function getPropertyPlaceholder(propertyType?: string): string {
@@ -70,69 +128,4 @@ export function getPropertyPlaceholder(propertyType?: string): string {
 export function getAddonPlaceholder(): string {
   const randomIndex = Math.floor(Math.random() * ADDON_PLACEHOLDERS.length);
   return ADDON_PLACEHOLDERS[randomIndex];
-}
-
-/**
- * Constructs full backend URL for image paths
- */
-function constructBackendImageUrl(imagePath: string): string {
-  // Convert backslashes to forward slashes
-  const correctedPath = imagePath.replace(/\\/g, '/');
-  
-  // Get backend URL from environment or use default
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-  
-  // Ensure path starts with /
-  const normalizedPath = correctedPath.startsWith('/') ? correctedPath : `/${correctedPath}`;
-  
-  return `${backendUrl}${normalizedPath}`;
-}
-
-/**
- * Returns a safe image URL with fallback to placeholder
- */
-export function getSafeImageUrl(imageUrl?: string, propertyType?: string): string {
-  if (imageUrl) {
-    // Handle backend image paths
-    if (imageUrl.startsWith('/uploads') || imageUrl.includes('uploads')) {
-      return constructBackendImageUrl(imageUrl);
-    }
-    
-    // For external URLs, validate and return as-is
-    if (isValidImageUrl(imageUrl)) {
-      return imageUrl;
-    }
-  }
-  
-  return getPropertyPlaceholder(propertyType);
-}
-
-/**
- * Returns an array of safe image URLs with fallbacks
- */
-export function getSafeImageArray(
-  images: string[], 
-  propertyType?: string, 
-  minCount: number = 1
-): string[] {
-  const validImages = images.filter(img => img && isValidImageUrl(img));
-  
-  // If we have enough valid images, return them
-  if (validImages.length >= minCount) {
-    return validImages;
-  }
-  
-  // Otherwise, fill with placeholders
-  const result = [...validImages];
-  const placeholders = PROPERTY_PLACEHOLDERS[propertyType || 'default'] || PROPERTY_PLACEHOLDERS.default;
-  
-  while (result.length < minCount) {
-    const randomIndex = Math.floor(Math.random() * placeholders.length);
-    const placeholder = placeholders[randomIndex];
-    if (!result.includes(placeholder)) {
-      result.push(placeholder);
-    }
-  }
-  
-  return result;
 }

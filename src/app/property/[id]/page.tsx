@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Property } from '@/types/api';
+import { Property, Agent } from '@/types/api';
 import { propertiesApi } from '@/api/properties';
+import { agentsApi } from '@/api/agents';
 import { PropertyGridSkeleton } from '@/components/ui/LoadingSkeleton';
 import { LoadingError } from '@/components/ui/ErrorMessage';
+import ContactAgentModal from '@/components/ui/ContactAgentModal';
 import Image from 'next/image';
 import { getSafeImageUrl } from '@/utils/imageUtils';
 
@@ -13,8 +15,11 @@ export default function PropertyDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
+  const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [agentLoading, setAgentLoading] = useState(false);
 
   const propertyId = params.id as string;
 
@@ -34,12 +39,22 @@ export default function PropertyDetailsPage() {
         // Handle the API response structure properly
         if (response && response.success && response.data) {
           setProperty(response.data);
+          
+          // If property has agent info, set it directly
+          if (response.data.agent) {
+            setAgent(response.data.agent);
+          }
         } else if (response && response.data && !response.success) {
           // Handle case where response.data exists but success is false
           setError(response.message || 'Property not found');
         } else if (response && typeof response === 'object' && response.id) {
           // Handle case where response is the property object directly
           setProperty(response);
+          
+          // If property has agent info, set it directly
+          if (response.agent) {
+            setAgent(response.agent);
+          }
         } else {
           setError('Property not found');
         }
@@ -53,6 +68,22 @@ export default function PropertyDetailsPage() {
 
     fetchProperty();
   }, [propertyId]);
+
+  const handleContactAgent = async () => {
+    if (property?.agent) {
+      // If agent info is already available from property data
+      setIsContactModalOpen(true);
+    } else {
+      // If we need to fetch agent info separately (future enhancement)
+      setIsContactModalOpen(true);
+    }
+  };
+
+  const handleViewAgentProfile = () => {
+    if (agent?.id) {
+      router.push(`/agents/${agent.id}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -187,27 +218,76 @@ export default function PropertyDetailsPage() {
             </div>
           )}
 
-          {/* Agent Information */}
-          {property.agent && (
-            <div className="border-t pt-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Contact Agent</h2>
+          {/* Contact Agent Section */}
+          <div className="border-t pt-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Interested in this property?</h2>
+            
+            {property.agent || agent ? (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={handleContactAgent}
+                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Contact Agent
+                </button>
+                
+                <button
+                  onClick={handleViewAgentProfile}
+                  className="flex-1 border border-blue-600 text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  View Agent Profile
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <button
+                  disabled
+                  className="bg-gray-300 text-gray-500 px-6 py-3 rounded-lg cursor-not-allowed font-medium"
+                >
+                  No agent assigned
+                </button>
+                <p className="text-gray-500 text-sm mt-2">
+                  This property doesn't have an assigned agent yet.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Agent Information Display (if available) */}
+          {(property.agent || agent) && (
+            <div className="border-t pt-6 mt-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Agent Information</h2>
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
                   <span className="text-xl font-bold text-gray-600">
-                    {property.agent.name.charAt(0)}
+                    {(property.agent?.name || agent?.name || 'A').charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">{property.agent.name}</p>
-                  <p className="text-gray-600">{property.agent.title}</p>
-                  <p className="text-blue-600">{property.agent.phone}</p>
-                  <p className="text-blue-600">{property.agent.email}</p>
+                  <p className="font-bold text-gray-900">{property.agent?.name || agent?.name}</p>
+                  <p className="text-gray-600">{property.agent?.title || agent?.title || 'Real Estate Agent'}</p>
+                  <p className="text-blue-600">{property.agent?.phone || agent?.phone}</p>
+                  <p className="text-blue-600">{property.agent?.email || agent?.email}</p>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Contact Agent Modal */}
+      <ContactAgentModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        agent={property.agent || agent}
+        propertyTitle={property.title}
+      />
     </div>
   );
 }

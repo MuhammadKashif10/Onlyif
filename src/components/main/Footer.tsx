@@ -87,43 +87,10 @@ export default function Footer() {
           {/* Contact & Legal */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Contact & Legal</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="text-gray-300 hover:text-white transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-gray-300 hover:text-white transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/careers" className="text-gray-300 hover:text-white transition-colors">
-                  Careers
-                </Link>
-              </li>
-              <li className="text-gray-300">Phone: (555) 123-4567</li>
-              <li className="text-gray-300">Email: info@onlyif.com</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="border-t border-gray-800 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
               <p>&copy; {currentYear} OnlyIf. All rights reserved.</p>
             </div>
             <div className="flex space-x-6 text-sm">
-              <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
               <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">
                 Terms of Service
               </Link>
@@ -134,9 +101,19 @@ export default function Footer() {
                 Accessibility
               </Link>
             </div>
+            <div className="mt-8 pt-8 border-t border-gray-700 flex flex-col md:flex-row justify-between items-center">
+              <p className="text-base text-gray-400">
+                © 2025 OnlyIf. All rights reserved.
+              </p>
+              <div className="mt-4 md:mt-0 flex space-x-6">
+                <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Terms
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </footer>
   );
-} 
+}

@@ -9,8 +9,8 @@ const connectDB = require('../config/db');
 const logger = require('../utils/logger');
 
 // Admin credentials as specified
-const ADMIN_EMAIL = 'info@onlyif.com';
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_EMAIL = 'Kashif@info.com';
+const ADMIN_PASSWORD = 'admin@1234';
 
 const seedData = async () => {
   try {
@@ -30,18 +30,27 @@ const seedData = async () => {
     
     if (!existingAdmin) {
       admin = await User.create({
-        name: 'OnlyIf Admin',
+        name: 'Kashif Admin',
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
         role: 'admin',
+        isSeeded: true, // Add this flag for admin authentication
         termsAccepted: true,
         termsAcceptedAt: new Date(),
         termsVersion: '1.0'
       });
       logger.info(`Admin account created: ${admin.email}`);
     } else {
-      admin = existingAdmin;
-      logger.info(`Admin account already exists: ${admin.email}`);
+      // Update existing admin to have isSeeded flag
+      admin = await User.findByIdAndUpdate(
+        existingAdmin._id,
+        { 
+          isSeeded: true,
+          role: 'admin' // Ensure role is admin
+        },
+        { new: true }
+      );
+      logger.info(`Admin account updated with isSeeded flag: ${admin.email}`);
     }
 
     // 2. Create Agent Accounts - REMOVED MOCK AGENTS
@@ -107,19 +116,19 @@ const seedData = async () => {
         description: 'Stunning 3-bedroom home with modern amenities and great location.',
         images: [
           {
-            url: '/images/01.jpg',
+            url: '/uploads/images/01.jpg',
             caption: 'Front exterior view',
             isPrimary: true,
             order: 1
           },
           {
-            url: '/images/02.jpg',
+            url: '/uploads/images/02.jpg',
             caption: 'Living room',
             isPrimary: false,
             order: 2
           },
           {
-            url: '/images/03.jpg',
+            url: '/uploads/images/03.jpg',
             caption: 'Kitchen',
             isPrimary: false,
             order: 3
@@ -155,19 +164,19 @@ const seedData = async () => {
         description: 'Luxury condo with panoramic city views and premium finishes.',
         images: [
           {
-            url: '/images/04.jpg',
+            url: '/uploads/images/04.jpg',
             caption: 'City view from balcony',
             isPrimary: true,
             order: 1
           },
           {
-            url: '/images/05.jpg',
+            url: '/uploads/images/05.jpg',
             caption: 'Modern living space',
             isPrimary: false,
             order: 2
           },
           {
-            url: '/images/06.jpg',
+            url: '/uploads/images/06.jpg',
             caption: 'Master bedroom',
             isPrimary: false,
             order: 3
@@ -179,7 +188,7 @@ const seedData = async () => {
           email: 'mike.davis@onlyif.com',
           phone: '(555) 987-6543'
         },
-        featured: true  // Change from false to true
+        featured: true
       }
     ];
 
@@ -206,52 +215,144 @@ const seedData = async () => {
         type: 'photo',
         title: 'Professional Photography Package',
         price: 299,
+        category: 'photography',
+        property: createdProperties[0]._id, // Use first property as reference
         features: [
-          'High-resolution photos',
-          '20-30 professional images',
-          'HDR processing',
-          'Same-day delivery'
+          {
+            name: 'High-resolution photos',
+            description: 'Professional quality images',
+            included: true
+          },
+          {
+            name: '20-30 professional images',
+            description: 'Comprehensive property coverage',
+            included: true
+          },
+          {
+            name: 'HDR processing',
+            description: 'Enhanced image quality',
+            included: true
+          },
+          {
+            name: 'Same-day delivery',
+            description: 'Quick turnaround time',
+            included: true
+          }
         ],
-        image: '/images/photo-addon.jpg',
+        images: [{
+          url: '/images/photo-addon.jpg',
+          caption: 'Professional Photography Package',
+          isPrimary: true,
+          order: 0
+        }],
         status: 'active'
       },
       {
         type: 'floorplan',
         title: 'Interactive Floor Plan',
         price: 199,
+        category: 'documentation',
+        property: createdProperties[0]._id,
         features: [
-          '2D floor plan',
-          'Room measurements',
-          'Interactive features',
-          'Print-ready format'
+          {
+            name: '2D floor plan',
+            description: 'Detailed layout visualization',
+            included: true
+          },
+          {
+            name: 'Room measurements',
+            description: 'Accurate room dimensions',
+            included: true
+          },
+          {
+            name: 'Interactive features',
+            description: 'Clickable room details',
+            included: true
+          },
+          {
+            name: 'Print-ready format',
+            description: 'High-quality printable version',
+            included: true
+          }
         ],
-        image: '/images/floorplan-addon.jpg',
+        images: [{
+          url: '/images/floorplan-addon.jpg',
+          caption: 'Interactive Floor Plan',
+          isPrimary: true,
+          order: 0
+        }],
         status: 'active'
       },
       {
         type: 'drone',
         title: 'Aerial Drone Photography',
         price: 399,
+        category: 'photography',
+        property: createdProperties[0]._id,
         features: [
-          'Aerial property shots',
-          '4K video footage',
-          'Neighborhood overview',
-          'Weather permitting'
+          {
+            name: 'Aerial property shots',
+            description: 'Bird\'s eye view photography',
+            included: true
+          },
+          {
+            name: '4K video footage',
+            description: 'Ultra-high definition video',
+            included: true
+          },
+          {
+            name: 'Neighborhood overview',
+            description: 'Surrounding area context',
+            included: true
+          },
+          {
+            name: 'Weather permitting',
+            description: 'Subject to weather conditions',
+            included: true
+          }
         ],
-        image: '/images/drone-addon.jpg',
+        images: [{
+          url: '/images/drone-addon.jpg',
+          caption: 'Aerial Drone Photography',
+          isPrimary: true,
+          order: 0
+        }],
         status: 'active'
       },
       {
         type: 'walkthrough',
         title: '3D Virtual Walkthrough',
         price: 499,
+        category: 'technology',
+        property: createdProperties[0]._id,
         features: [
-          '360-degree virtual tour',
-          'Interactive hotspots',
-          'Mobile-friendly',
-          'Branded experience'
+          {
+            name: '360-degree virtual tour',
+            description: 'Immersive property experience',
+            included: true
+          },
+          {
+            name: 'Interactive hotspots',
+            description: 'Clickable information points',
+            included: true
+          },
+          {
+            name: 'Mobile-friendly',
+            description: 'Optimized for all devices',
+            included: true
+          },
+          {
+            name: 'Branded experience',
+            description: 'Custom branding options',
+            included: true
+          }
         ],
-        image: '/images/walkthrough-addon.jpg',
+        images: [{
+          url: '/images/walkthrough-addon.jpg',
+          caption: '3D Virtual Walkthrough',
+          isPrimary: true,
+          order: 0
+        }],
         status: 'active'
       }
     ];

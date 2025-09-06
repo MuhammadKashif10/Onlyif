@@ -58,6 +58,19 @@ const RegistrationPhase: React.FC = () => {
       }
     }
 
+    // Checkbox validations
+    if (!buyerData.unlockFeeAcknowledgment) {
+      newErrors.unlockFeeAcknowledgment = 'You must acknowledge the unlock fee terms';
+    }
+
+    if (!buyerData.noBypassing) {
+      newErrors.noBypassing = 'You must agree not to bypass the platform';
+    }
+
+    if (!buyerData.responsibilityAcknowledgment) {
+      newErrors.responsibilityAcknowledgment = 'You must acknowledge the responsibility terms';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -153,6 +166,57 @@ const RegistrationPhase: React.FC = () => {
           isConfirmField
           confirmPassword={buyerData.password}
         />
+
+        {/* New checkboxes */}
+        <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="unlockFeeAcknowledgment"
+              checked={buyerData.unlockFeeAcknowledgment}
+              onChange={(e) => updateBuyerData({ unlockFeeAcknowledgment: e.target.checked })}
+              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="unlockFeeAcknowledgment" className="text-sm text-gray-700">
+              I understand the $49 unlock fee is non-refundable and grants access to full listing details.
+            </label>
+          </div>
+          {errors.unlockFeeAcknowledgment && (
+            <p className="text-red-600 text-sm ml-7">{errors.unlockFeeAcknowledgment}</p>
+          )}
+
+          <div className="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="noBypassing"
+              checked={buyerData.noBypassing}
+              onChange={(e) => updateBuyerData({ noBypassing: e.target.checked })}
+              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="noBypassing" className="text-sm text-gray-700">
+              I agree not to contact sellers directly or bypass the platform.
+            </label>
+          </div>
+          {errors.noBypassing && (
+            <p className="text-red-600 text-sm ml-7">{errors.noBypassing}</p>
+          )}
+
+          <div className="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="responsibilityAcknowledgment"
+              checked={buyerData.responsibilityAcknowledgment}
+              onChange={(e) => updateBuyerData({ responsibilityAcknowledgment: e.target.checked })}
+              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="responsibilityAcknowledgment" className="text-sm text-gray-700">
+              I acknowledge Only If is not responsible for the sale outcome or owner decisions.
+            </label>
+          </div>
+          {errors.responsibilityAcknowledgment && (
+            <p className="text-red-600 text-sm ml-7">{errors.responsibilityAcknowledgment}</p>
+          )}
+        </div>
 
         {errors.submit && (
           <div className="text-red-600 text-sm text-center">

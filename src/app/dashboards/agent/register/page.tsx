@@ -18,24 +18,58 @@ export default function AgentRegistration() {
     brokerage: '',
     yearsOfExperience: '',
     specialization: '',
-    role: 'agent' // Pre-selected as Agent
+    role: 'agent', // Pre-selected as Agent
+    successFeeAgreement: false,
+    noBypassing: false,
+    professionalismCommitment: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'successFeeAgreement' || field === 'noBypassing' || field === 'professionalismCommitment') {
+      setFormData(prev => ({ ...prev, [field]: value === 'true' }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
     // Clear message when user starts typing
     if (message) {
       setMessage(null);
+    }
+    // Clear specific field error
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Clear previous errors
+    setErrors({});
+    const newErrors: Record<string, string> = {};
+    
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match' });
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    // Checkbox validations
+    if (!formData.successFeeAgreement) {
+      newErrors.successFeeAgreement = 'You must agree to the success fee terms';
+    }
+
+    if (!formData.noBypassing) {
+      newErrors.noBypassing = 'You must agree not to solicit clients off-platform';
+    }
+
+    if (!formData.professionalismCommitment) {
+      newErrors.professionalismCommitment = 'You must commit to representing the brand professionally';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setMessage({ type: 'error', text: 'Please correct the errors below' });
       return;
     }
 
@@ -254,6 +288,59 @@ export default function AgentRegistration() {
               <label htmlFor="terms" className="text-sm text-gray-600">
                 I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
               </label>
+            </div>
+
+            {/* New Agent Agreement Checkboxes */}
+            <div className="space-y-4 border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Agent Partnership Agreement</h3>
+              
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  id="successFeeAgreement"
+                  checked={formData.successFeeAgreement}
+                  onChange={(e) => handleInputChange('successFeeAgreement', e.target.checked.toString())}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="successFeeAgreement" className="text-sm text-gray-700">
+                  I agree to a 50% share of the 1.1% success fee on any sale I assist with.
+                </label>
+              </div>
+              {errors.successFeeAgreement && (
+                <p className="text-red-600 text-sm ml-7">{errors.successFeeAgreement}</p>
+              )}
+
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  id="noBypassing"
+                  checked={formData.noBypassing}
+                  onChange={(e) => handleInputChange('noBypassing', e.target.checked.toString())}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="noBypassing" className="text-sm text-gray-700">
+                  I will not solicit clients off-platform or use Only If to prospect privately.
+                </label>
+              </div>
+              {errors.noBypassing && (
+                <p className="text-red-600 text-sm ml-7">{errors.noBypassing}</p>
+              )}
+
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  id="professionalismCommitment"
+                  checked={formData.professionalismCommitment}
+                  onChange={(e) => handleInputChange('professionalismCommitment', e.target.checked.toString())}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="professionalismCommitment" className="text-sm text-gray-700">
+                  I commit to representing the brand and platform with professionalism.
+                </label>
+              </div>
+              {errors.professionalismCommitment && (
+                <p className="text-red-600 text-sm ml-7">{errors.professionalismCommitment}</p>
+              )}
             </div>
 
             {/* Submit Button */}

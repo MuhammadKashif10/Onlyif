@@ -20,6 +20,13 @@ interface SellerData {
   otp: string;
   termsAccepted: boolean;
   
+  // Seller agreements
+  legalAuthorization: boolean;
+  successFeeAgreement: boolean;
+  noBypassing: boolean;
+  upgradesAcknowledgment: boolean;
+  agentPartnerHelp: boolean;
+  
   // Property info
   address: Address;
   price: string;
@@ -79,6 +86,13 @@ export const SellerProvider: React.FC<SellerProviderProps> = ({ children }) => {
     otp: '',
     termsAccepted: false,
     
+    // Seller agreements
+    legalAuthorization: false,
+    successFeeAgreement: false,
+    noBypassing: false,
+    upgradesAcknowledgment: false,
+    agentPartnerHelp: false,
+    
     // Property info
     address: {
       street: '',
@@ -120,6 +134,11 @@ export const SellerProvider: React.FC<SellerProviderProps> = ({ children }) => {
       confirmPassword: '',
       otp: '',
       termsAccepted: false,
+      legalAuthorization: false,
+      successFeeAgreement: false,
+      noBypassing: false,
+      upgradesAcknowledgment: false,
+      agentPartnerHelp: false,
       address: {
         street: '',
         city: '',

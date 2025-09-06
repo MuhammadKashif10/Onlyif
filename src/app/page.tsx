@@ -6,10 +6,8 @@ import {
   Navbar,
   HeroSection,
   CTASection,
-  TestimonialSlider,
   Footer
 } from '@/components';
-import testimonialsData from '@/data/testimonials.json';
 
 // Sample data for demonstration
 const sampleProperties = [
@@ -73,18 +71,6 @@ const sampleProperties = [
   }
 ];
 
-// Extract testimonials from the JSON data
-const sampleTestimonials = testimonialsData.testimonials.map(testimonial => ({
-  id: testimonial.id,
-  name: testimonial.name,
-  role: testimonial.role,
-  content: testimonial.content,
-  rating: testimonial.rating,
-  image: testimonial.avatar,
-  location: testimonial.location,
-  propertyType: testimonial.propertyType
-}));
-
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -132,14 +118,6 @@ export default function HomePage() {
         secondaryCtaHref="/how-it-works"
         variant="primary"
         alignment="center"
-      />
-
-      {/* Testimonials */}
-      <TestimonialSlider 
-        testimonials={sampleTestimonials}
-        variant="card"
-        autoPlay={true}
-        autoPlayInterval={5000}
       />
 
       {/* Footer removed - already handled by layout.tsx */}
